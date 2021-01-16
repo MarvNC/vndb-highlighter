@@ -12,7 +12,7 @@
 // ==/UserScript==
 
 const listExportUrl = (id) => `https://vndb.org/${id}/list-export/xml`;
-const highlightColor = '#2B0A27';
+const highlightColor = 'rgba(190, 33, 210, 0.18)';
 const types = {
   STAFF: { vnSelector: 'tr > td.tc1 > a' },
   VNS: { vnSelector: '#maincontent > div.mainbox > ul > li > a' },
@@ -32,32 +32,36 @@ else if (document.URL.match('vndb.org/p')) {
       : types.RELEASES;
 }
 
-let response = await fetch(listExportUrl(userID)).then((response) => response.text());
-let parser = new DOMParser();
-xmlDoc = parser.parseFromString(response, 'text/xml');
-let vnsList = xmlDoc.querySelectorAll('vndb-export > vns > vn');
-let vns = {};
-Array.from(vnsList).forEach((vn) => {
-  vns[vn.id] = {};
-  vns[vn.id].title = vn.querySelector('title').innerHTML;
-  vns[vn.id].lists = [...vn.querySelectorAll('label')].map((label) => label.attributes.label.value);
-  let vote = vn.querySelector('vote');
-  vns[vn.id].vote = vote ? parseFloat(vote.innerHTML) : 0;
-});
-console.log(vns);
+(async function () {
+  let response = await fetch(listExportUrl(userID)).then((response) => response.text());
+  let parser = new DOMParser();
+  xmlDoc = parser.parseFromString(response, 'text/xml');
+  let vnsList = xmlDoc.querySelectorAll('vndb-export > vns > vn');
+  let vns = {};
+  Array.from(vnsList).forEach((vn) => {
+    vns[vn.id] = {};
+    vns[vn.id].title = vn.querySelector('title').innerHTML;
+    vns[vn.id].lists = [...vn.querySelectorAll('label')].map(
+      (label) => label.attributes.label.value
+    );
+    let vote = vn.querySelector('vote');
+    vns[vn.id].vote = vote ? parseFloat(vote.innerHTML) : 0;
+  });
+  console.log(vns);
 
-let vnElems = [...document.querySelectorAll(page.vnSelector)];
+  let vnElems = [...document.querySelectorAll(page.vnSelector)];
 
-vnElems.forEach((elem) => {
-  let vnID = elem.href.split('/').pop();
-  if (vns[vnID] && vns[vnID].lists.length > 0) {
-    console.log(vns[vnID]);
-    let bgElem = page == types.STAFF ? elem.parentElement.parentElement : elem.parentElement;
-    bgElem.style.background = highlightColor;
-    elem.innerHTML = `<strong>${
-      elem.innerHTML
-    }</strong><span style="color:#37a;padding-left:15px;">${vns[vnID].lists.join(', ')} ${
-      vns[vnID].vote ? ` ; Score: ${vns[vnID].vote}` : ''
-    }</span>`;
-  }
-});
+  vnElems.forEach((elem) => {
+    let vnID = elem.href.split('/').pop();
+    if (vns[vnID] && vns[vnID].lists.length > 0) {
+      console.log(vns[vnID]);
+      let bgElem = page == types.STAFF ? elem.parentElement.parentElement : elem.parentElement;
+      bgElem.style.background = highlightColor;
+      elem.innerHTML = `<strong>${
+        elem.innerHTML
+      }</strong><span style="color:#37a;padding-left:15px;">${vns[vnID].lists.join(', ')} ${
+        vns[vnID].vote ? ` ; Score: ${vns[vnID].vote}` : ''
+      }</span>`;
+    }
+  });
+})();
