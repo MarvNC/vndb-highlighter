@@ -12,9 +12,9 @@
 const listExportUrl = (id) => `https://vndb.org/${id}/list-export/xml`;
 const highlightColor = '#2B0A27';
 const types = {
-  STAFF: 1,
-  VNS: 2,
-  RELEASES: 3,
+  STAFF: { vnSelector: 'tr > td.tc1 > a' },
+  VNS: { vnSelector: '#maincontent > div.mainbox > ul > li > a' },
+  RELEASES: { vnSelector: 'tbody > tr.vn > td > a' },
 };
 
 let userIDelem = document.querySelector('#menulist > div:nth-child(3) > div > a:nth-child(1)');
@@ -47,13 +47,7 @@ else if (document.URL.match('vndb.org/p')) {
   });
   console.log(vns);
 
-  let vnElems;
-
-  if (page == types.STAFF) vnElems = [...document.querySelectorAll('tr > td.tc1 > a')];
-  else if (page == types.VNS)
-    vnElems = [...document.querySelectorAll('#maincontent > div.mainbox > ul > li > a')];
-  else if (page == types.RELEASES)
-    vnElems = [...document.querySelectorAll('tbody > tr.vn > td > a')];
+  let vnElems = [...document.querySelectorAll(page.vnSelector)];
 
   vnElems.forEach((elem) => {
     let vnID = elem.href.split('/').pop();
