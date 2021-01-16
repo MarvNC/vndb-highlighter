@@ -6,6 +6,8 @@
 // @grant       none
 // @version     1.0
 // @author      Marv
+// @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
+// @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
 // @description Highlights entries on VNDB that are on a logged in user's vn list.
 // ==/UserScript==
 
