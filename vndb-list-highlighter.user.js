@@ -5,7 +5,7 @@
 // @match       https://vndb.org/p*
 // @grant       none
 // @version     1.0
-// @author      -
+// @author      Marv
 // @description Highlights entries on VNDB that are on a logged in user's vn list.
 // ==/UserScript==
 
