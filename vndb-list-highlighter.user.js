@@ -50,7 +50,7 @@ else if (document.URL.match('vndb.org/p')) {
   let vnElems;
 
   if (page == types.STAFF) vnElems = [...document.querySelectorAll('tr > td.tc1 > a')];
-  /* .map((a) => a.parentNode); */ else if (page == types.VNS)
+  else if (page == types.VNS)
     vnElems = [...document.querySelectorAll('#maincontent > div.mainbox > ul > li > a')];
   else if (page == types.RELEASES)
     vnElems = [...document.querySelectorAll('tbody > tr.vn > td > a')];
@@ -66,7 +66,6 @@ else if (document.URL.match('vndb.org/p')) {
       }</strong><span style="color:#37a;padding-left:15px;">${vns[vnID].lists.join(', ')} ${
         vns[vnID].vote ? ` ; Score: ${vns[vnID].vote}` : ''
       }</span>`;
-      // elem.innerHTML =
     }
   });
 })();
