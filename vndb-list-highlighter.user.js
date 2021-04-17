@@ -5,7 +5,7 @@
 // @match       https://vndb.org/p*
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/u*/edit
-// @version     1.24
+// @version     1.3
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
@@ -15,6 +15,8 @@
 // @grant       GM_addStyle
 // @grant       GM_getResourceText
 // @require     https://unpkg.com/@popperjs/core@2.9.2/dist/umd/popper.min.js
+// @require     https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js
+// @resource    pickrCSS https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css
 // @run-at      document-idle
 // ==/UserScript==
 
@@ -71,20 +73,22 @@ const types = {
   `,
   },
 };
+const defaultColors = {
+  highlightColor: 'rgba(190, 33, 210, 0.18)',
+  subTextColor: '#1D73B0',
+};
 
 let userIDelem = document.querySelector('#menulist > div:nth-child(3) > div > a:nth-child(1)');
 let userID = userIDelem ? userIDelem.href.match(/u\d+/)[0] : null;
 
-let colors = GM_getValue('colors', {
-  highlightColor: 'rgba(190, 33, 210, 0.18)',
-  subTextColor: '#37a',
-});
+let colors = GM_getValue('colors', defaultColors);
 
 GM_addStyle(
   `.listinfo{color:${colors.subTextColor}!important;padding-left:15px;}
   .colorbg{background:${colors.highlightColor}!important}
   .tooltip{display:none;z-index:999;}.tooltip[data-show]{display:block;}`
 );
+GM_addStyle(GM_getResourceText('pickrCSS'));
 
 let vns;
 if (!GM_getValue('pages', null)) GM_setValue('pages', {});
@@ -134,10 +138,48 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
     let page = await getPage(document.URL, document);
     let table = createElementFromHTML(page.table);
     page.before.parentElement.insertBefore(table, page.before);
-    if (type == types.Staff) {
-      table.parentElement.insertBefore(createElementFromHTML(), table);
-    }
   } else if (type == types.Settings) {
+    let fieldset = document.querySelector('#maincontent > form > fieldset');
+    addPickerStuff(fieldset);
+
+    let highlightPicker = Pickr.create(PickrOptions('.color-picker-1', colors.highlightColor));
+    let subTextPicker = Pickr.create(PickrOptions('.color-picker-2', colors.subTextColor));
+    let setColors = () => {
+      highlightPicker.setColor(colors.highlightColor);
+      subTextPicker.setColor(colors.subTextColor);
+      updateColors();
+    };
+    document.querySelector('.saveColors').onclick = () => GM_setValue('colors', colors);
+    document.querySelector('.resetColors').onclick = () => {
+      colors = GM_getValue('colors', defaultColors);
+      setColors();
+    };
+    document.querySelector('.resetDefaultColors').onclick = () => {
+      colors = JSON.parse(JSON.stringify(defaultColors));
+      setColors();
+    };
+
+    ['change', 'swatchselect', 'save'].forEach((colorEvent) =>
+      highlightPicker.on(colorEvent, (color) => {
+        colors.highlightColor = color.toRGBA().toString(2);
+        updateColors();
+      })
+    );
+    ['change', 'swatchselect', 'save'].forEach((colorEvent) =>
+      subTextPicker.on(colorEvent, (color) => {
+        colors.subTextColor = color.toRGBA().toString(2);
+        updateColors();
+      })
+    );
+
+    function updateColors() {
+      [...document.querySelectorAll('.colorbg')].forEach((elem) => {
+        elem.style.cssText = `background:${colors.highlightColor}!important`;
+      });
+      [...document.querySelectorAll('.listinfo')].forEach((elem) => {
+        elem.style.cssText = `color:${colors.subTextColor}!important`;
+      });
+    }
   }
 })();
 
@@ -258,4 +300,210 @@ function createElementFromHTML(htmlString) {
 
 function timer(ms) {
   return new Promise((res) => setTimeout(res, ms));
+}
+
+function PickrOptions(selector, defaultColor) {
+  return {
+    el: selector,
+    theme: 'classic',
+
+    default: defaultColor,
+
+    swatches: [
+      'rgba(244, 67, 54, 1)',
+      'rgba(233, 30, 99, 0.95)',
+      'rgba(156, 39, 176, 0.9)',
+      'rgba(103, 58, 183, 0.85)',
+      'rgba(63, 81, 181, 0.8)',
+      'rgba(33, 150, 243, 0.75)',
+      'rgba(3, 169, 244, 0.7)',
+      'rgba(0, 188, 212, 0.7)',
+      'rgba(0, 150, 136, 0.75)',
+      'rgba(76, 175, 80, 0.8)',
+      'rgba(139, 195, 74, 0.85)',
+      'rgba(205, 220, 57, 0.9)',
+      'rgba(255, 235, 59, 0.95)',
+      'rgba(255, 193, 7, 1)',
+    ],
+
+    components: {
+      // Main components
+      preview: true,
+      opacity: true,
+      hue: true,
+
+      // Input / output Options
+      interaction: {
+        hex: true,
+        rgba: true,
+        hsla: true,
+        hsva: true,
+        cmyk: true,
+        input: true,
+        clear: true,
+        save: true,
+      },
+    },
+  };
+}
+
+function addPickerStuff(fieldset){
+  fieldset.append(
+    createElementFromHTML(`<div class="mainbox">
+    <h1>List Highlighter</h1>
+    <table class="formtable">
+      <tr class="newpart">
+        <td colspan="2">Pick Colors</td>
+      </tr>
+      <tr class="newfield">
+        <td class="label">Entry Color</td>
+        <td class="field"><div class="color-picker-1"></div></td>
+      </tr>
+      <tr class="newfield">
+        <td class="label">List Test Color</td>
+        <td class="field"><div class="color-picker-2"></div></td>
+      </tr>
+    </table>
+      <div class="colorbuttons">
+        <input type="button" value="Save" class="submit saveColors">
+        <input type="button" value="Reset" class="submit resetColors">
+        <input type="button" value="Reset to Defaults" class="submit resetDefaultColors">
+      </div>
+  </div>
+  `)
+  );
+  fieldset.append(
+    createElementFromHTML(`<div class="mainbox browse staffroles">
+    <p>On List (10)</p>
+    <table class="stripe">
+      <thead>
+        <tr>
+          <td class="tc1">Title</td>
+          <td class="tc2">Released</td>
+          <td class="tc3">Role/Cast</td>
+          <td class="tc4">As</td>
+          <td class="tc5">Note</td>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="tc1">
+            <a href="/v11856" title="フレラバ ～Friend to Lover～"> Fureraba ~Friend to Lover~ </a>
+          </td>
+          <td class="tc2">2013-06-28</td>
+          <td class="tc3"><a href="/c16555" title="望月 理奈">Mochizuki Rina</a></td>
+          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
+          <td class="tc5"></td>
+        </tr>
+        <tr>
+          <td class="tc1">
+            <a href="/v14265" title="星織ユメミライ">
+               Hoshi Ori Yume Mirai </a
+            >
+          </td>
+          <td class="tc2">2014-07-25</td>
+          <td class="tc3"><a href="/c19045" title="篠崎 真里花">Shinozaki Marika</a></td>
+          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
+          <td class="tc5"></td>
+        </tr>
+        <tr class="colorbg">
+          <td class="tc1">
+            <a href="/v15077" title="あの晴れわたる空より高く">
+              <strong> Ano Harewataru Sora yori Takaku </strong>
+              <span class="listinfo"> Finished, Voted ; Score: 10 </span></a
+            >
+          </td>
+          <td class="tc2">2014-09-26</td>
+          <td class="tc3"><a href="/c21325" title="黎明 夏帆">Reimei Kaho</a></td>
+          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
+          <td class="tc5"></td>
+        </tr>
+        <tr>
+          <td class="tc1">
+            <a href="/v15064" title="ゆきこいめると">
+              Yuki Koi Melt </a
+            >
+          </td>
+          <td class="tc2">2015-03-27</td>
+          <td class="tc3"><a href="/c24603" title="烈風寺 嘩音">Reppuuji Kanon</a></td>
+          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
+          <td class="tc5"></td>
+        </tr>
+        <tr>
+          <td class="tc1">
+            <a href="/v18131" title="まいてつ">
+               Maitetsu </a
+            >
+          </td>
+          <td class="tc2">2016-03-25</td>
+          <td class="tc3"><a href="/c39201" title="雛衣 ポーレット">Hinai Paulette</a></td>
+          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
+          <td class="tc5"></td>
+        </tr>
+        <tr>
+          <td class="tc1">
+            <a href="/v20433" title="猫忍えくすはーと">
+               Neko-nin exHeart </a
+            >
+          </td>
+          <td class="tc2">2017-02-24</td>
+          <td class="tc3"><a href="/c55101" title="風魔 たま">Fuuma Tama</a></td>
+          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
+          <td class="tc5"></td>
+        </tr>
+        <tr class="colorbg">
+          <td class="tc1">
+            <a href="/v21852" title="金色ラブリッチェ">
+              <strong> Kin'iro Loveriche </strong>
+              <span class="listinfo"> Playing </span></a
+            >
+          </td>
+          <td class="tc2">2017-12-22</td>
+          <td class="tc3">
+            <a href="/c64304" title="エロイナ・ディ・カバリェロ・イスタ"
+              >Heroina di Caballero istaa</a
+            >
+          </td>
+          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
+          <td class="tc5"></td>
+        </tr>
+        <tr>
+          <td class="tc1">
+            <a href="/v26000" title="きまぐれテンプテーション">
+               Kimagure Temptation </a
+            >
+          </td>
+          <td class="tc2">2019-09-27</td>
+          <td class="tc3"><a href="/c83876" title="クーリィ">Cooley</a></td>
+          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
+          <td class="tc5"></td>
+        </tr>
+        <tr>
+          <td class="tc1">
+            <a href="/v24689" title="スタディ§ステディ">
+               Study § Steady </a
+            >
+          </td>
+          <td class="tc2">2019-09-27</td>
+          <td class="tc3"><a href="/c77386" title="来宮 なのか">Kinomiya Nanoka</a></td>
+          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
+          <td class="tc5"></td>
+        </tr>
+        <tr class="colorbg">
+          <td class="tc1">
+            <a href="/v27449" title="ハミダシクリエイティブ">
+              <strong> Hamidashi Creative </strong>
+              <span class="listinfo"> Wishlist, Wishlist-Medium </span></a
+            >
+          </td>
+          <td class="tc2">2020-09-25</td>
+          <td class="tc3"><a href="/c91567" title="和泉 里">Izumi Miri</a></td>
+          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
+          <td class="tc5"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  `)
+  );
 }
