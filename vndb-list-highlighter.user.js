@@ -7,8 +7,8 @@
 // @match       https://vndb.org/u*/edit
 // @version     1.31
 // @author      Marv
-// @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
-// @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
+// @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-list-info/main/vndb-list-highlighter.user.js
+// @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-list-info/main/vndb-list-highlighter.user.js
 // @description Highlights entries on VNDB that are on a logged in user's vn list.
 // @grant       GM_getValue
 // @grant       GM_setValue
