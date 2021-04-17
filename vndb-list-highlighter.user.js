@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        VNDB List Highlighter
+// @name        VNDB List Info
 // @namespace   https://github.com/MarvNC
 // @match       https://vndb.org/s*
 // @match       https://vndb.org/p*
