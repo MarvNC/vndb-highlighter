@@ -4,7 +4,7 @@
 // @match       https://vndb.org/s*
 // @match       https://vndb.org/p*
 // @match       https://vndb.org/v*
-// @version     1.2
+// @version     1.21
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
@@ -99,7 +99,7 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
       tooltip.className += ' tooltip';
       pageElem.prepend(tooltip);
       let popperInstance = Popper.createPopper(pageElem, tooltip, {
-        placement: 'left',
+        placement: 'top',
       });
       function show() {
         tooltip.setAttribute('data-show', '');
