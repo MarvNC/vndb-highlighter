@@ -5,7 +5,7 @@
 // @match       https://vndb.org/p*
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/u*/edit
-// @version     1.3
+// @version     1.31
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
@@ -22,7 +22,7 @@
 
 const delayMs = 200;
 const fetchListMs = 600000;
-const updatePageMs = 2592000000;
+const updatePageMs = 600000;
 const listExportUrl = (id) => `https://vndb.org/${id}/list-export/xml`;
 const types = {
   VN: 'loli',
