@@ -14,8 +14,8 @@ In addition, on vn pages the userscript will add tooltips to staff and producer 
 
 You can navigate to your user settings page ("my profile") to change the colors the userscript uses to highlight entries.
 
-## Example
+## Images
 
 ![highlight](https://files.catbox.moe/asdz2o.png)
 ![tooltips](https://files.catbox.moe/3bh5ck.png)
-![colorpicker](https://files.catbox.moe/m37ozx.png)
+![colorpicker](https://files.catbox.moe/8x71d9.png)
