@@ -5,7 +5,7 @@
 // @match       https://vndb.org/p*
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/u*/edit
-// @version     1.31
+// @version     1.32
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-list-info/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-list-info/main/vndb-list-highlighter.user.js
@@ -340,8 +340,8 @@ function PickrOptions(selector, defaultColor) {
         hsva: true,
         cmyk: true,
         input: true,
-        clear: true,
-        save: true,
+        clear: false,
+        save: false,
       },
     },
   };

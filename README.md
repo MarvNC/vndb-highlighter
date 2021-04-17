@@ -18,4 +18,4 @@ You can navigate to your user settings page ("my profile") to change the colors 
 
 ![highlight](https://files.catbox.moe/asdz2o.png)
 ![tooltips](https://files.catbox.moe/3bh5ck.png)
-![colorpicker](https://files.catbox.moe/4vyrrq.png)
+![colorpicker](https://files.catbox.moe/numnz2.png)
