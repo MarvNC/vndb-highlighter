@@ -347,7 +347,7 @@ function PickrOptions(selector, defaultColor) {
   };
 }
 
-function addPickerStuff(fieldset){
+function addPickerStuff(fieldset) {
   fieldset.append(
     createElementFromHTML(`<div class="mainbox">
     <h1>List Highlighter</h1>
@@ -374,7 +374,7 @@ function addPickerStuff(fieldset){
   );
   fieldset.append(
     createElementFromHTML(`<div class="mainbox browse staffroles">
-    <p>On List (10)</p>
+    <p>Test List</p>
     <table class="stripe">
       <thead>
         <tr>

@@ -1,9 +1,21 @@
 ### [Install](https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js)
 
-# vndb-list-highlighter
- Highlights entries on VNDB that are on a logged in user's vn list.
- 
- This userscript will work on staff pages (`vndb.org/s*`) and producer pages (`vndb.org/p*`), highlighting entries on the page that are on your VN list as well as displaying the list status of the visual novel and its vote, if you have voted on it.
+# vndb-list-info
+
+## Highlighting
+
+This userscript will work on staff and company pages to highlight entries that are on your VNDB list.
+
+## Tooltips
+
+In addition, on vn pages the userscript will add tooltips to staff and producer links so you can easily see what novels and roles you know a producer or staff for.
+
+## Usage
+
+You can navigate to your user settings page ("my profile") to change the colors the userscript uses to highlight entries.
 
 ## Example
-![example](https://i.fiery.me/X8ZN2.png)
+
+![highlight](https://files.catbox.moe/asdz2o.png)
+![tooltips](https://files.catbox.moe/3bh5ck.png)
+![colorpicker](https://files.catbox.moe/m37ozx.png)
