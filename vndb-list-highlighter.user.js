@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name        VNDB Highlighter
 // @namespace   https://github.com/MarvNC
+// @homepageURL https://github.com/MarvNC/vndb-highlighter
 // @match       https://vndb.org/s*
 // @match       https://vndb.org/p*
 // @match       https://vndb.org/v*
@@ -9,7 +10,7 @@
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
-// @description Highlights entries on VNDB that are on a logged in user's vn list.
+// @description Highlights and provides tooltips for known entries on VNDB.
 // @grant       GM_getValue
 // @grant       GM_setValue
 // @grant       GM_addStyle
