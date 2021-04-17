@@ -4,7 +4,8 @@
 // @match       https://vndb.org/s*
 // @match       https://vndb.org/p*
 // @match       https://vndb.org/v*
-// @version     1.21
+// @match       https://vndb.org/u*/edit
+// @version     1.22
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
@@ -20,6 +21,7 @@ const fetchListMs = 600000;
 const listExportUrl = (id) => `https://vndb.org/${id}/list-export/xml`;
 const types = {
   VN: 'loli',
+  Settings: 'cute',
   Staff: {
     vnSelector: 'tr > td.tc1 > a',
     insertBefore: '#maincontent > .boxtitle',
@@ -117,15 +119,17 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
         pageElem.addEventListener(event, hide);
       });
     }
-  } else {
+  } else if ([types.CompanyVNs, types.Releases, types.Staff].includes(type)) {
     let page = await getPage(document.URL, document);
-    page.before.parentElement.insertBefore(page.table, page.before);
+    page.before.parentElement.insertBefore(createElementFromHTML(page.table), page.before);
     if (type == types.Staff) {
       page.table.parentElement.insertBefore(
         createElementFromHTML(`<h1 class="boxtitle">On List (${page.count})</h1>`),
         page.table
       );
     }
+  } else if (type == types.Settings) {
+    
   }
 })();
 
@@ -174,11 +178,11 @@ async function getPage(url, doc = null) {
     }
   });
 
-  table = createElementFromHTML(type.box(novelelements));
+  table = type.box(novelelements);
   before = doc.querySelector(type.insertBefore);
 
   let pages = GM_getValue('pages');
-  pages[url] = { table: table.outerHTML, count: count };
+  pages[url] = { table: table, count: count };
   GM_setValue('pages', pages);
   return { type, table, before, count };
 }
@@ -191,6 +195,8 @@ function getType(url, doc) {
     return text == 'Releases' ? types.Releases : types.CompanyVNs;
   } else if (url.match('vndb.org/v')) {
     return types.VN;
+  } else if (url.match(/vndb.org\/u\d+\/edit/)) {
+    return types.Settings;
   }
 }
 
