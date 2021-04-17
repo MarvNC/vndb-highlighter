@@ -4,14 +4,16 @@
 // @match       https://vndb.org/s*
 // @match       https://vndb.org/p*
 // @match       https://vndb.org/v*
-// @grant       GM_getValue
-// @grant       GM_setValue
-// @grant       GM_addStyle
-// @version     1.1
+// @version     1.2
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
 // @description Highlights entries on VNDB that are on a logged in user's vn list.
+// @grant       GM_getValue
+// @grant       GM_setValue
+// @grant       GM_addStyle
+// @require     https://unpkg.com/@popperjs/core@2.9.2/dist/umd/popper.min.js
+// @run-at      document-idle
 // ==/UserScript==
 
 const fetchListMs = 600000;
@@ -75,7 +77,7 @@ let colors = GM_getValue('colors', {
 GM_addStyle(
   `.listinfo{color:${colors.subTextColor}!important;padding-left:15px;}
   .colorbg{background:${colors.highlightColor}!important}
-  .tooltip{visibility:hidden;position:absolute;}.tooltip:hover{visibility:visible}`
+  .tooltip{display:none;z-index:999;}.tooltip[data-show]{display:block;}`
 );
 
 let vns;
@@ -90,9 +92,30 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
     let pages = [...document.querySelectorAll('a[href]')].filter((elem) =>
       elem.href.match(/vndb.org\/[sp]\d+/)
     );
-    for (page of pages) {
-      console.log(`Fetching page: ${page.innerHTML} - ${page.href}`);
-      let pageInfo = await getPage(page.href);
+    for (let pageElem of pages) {
+      console.log(`Fetching page: ${pageElem.innerHTML} - ${pageElem.href}`);
+      let pageInfo = await getPage(pageElem.href);
+      let tooltip = createElementFromHTML(pageInfo.table);
+      tooltip.className += ' tooltip';
+      pageElem.prepend(tooltip);
+      let popperInstance = Popper.createPopper(pageElem, tooltip, {
+        placement: 'left',
+      });
+      function show() {
+        tooltip.setAttribute('data-show', '');
+        popperInstance.update();
+      }
+      function hide() {
+        tooltip.removeAttribute('data-show');
+      }
+      const showEvents = ['mouseenter', 'focus'];
+      const hideEvents = ['mouseleave', 'blur'];
+      showEvents.forEach((event) => {
+        pageElem.addEventListener(event, show);
+      });
+      hideEvents.forEach((event) => {
+        pageElem.addEventListener(event, hide);
+      });
     }
   } else {
     let page = await getPage(document.URL, document);
@@ -155,7 +178,7 @@ async function getPage(url, doc = null) {
   before = doc.querySelector(type.insertBefore);
 
   let pages = GM_getValue('pages');
-  pages[url] = table.outerHTML;
+  pages[url] = { table: table.outerHTML, count: count };
   GM_setValue('pages', pages);
   return { type, table, before, count };
 }
