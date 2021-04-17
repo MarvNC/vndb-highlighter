@@ -5,7 +5,7 @@
 // @match       https://vndb.org/p*
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/u*/edit
-// @version     1.32
+// @version     1.4
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-list-info/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-list-info/main/vndb-list-highlighter.user.js
@@ -62,7 +62,7 @@ const types = {
   Releases: {
     vnSelector: 'tbody > tr.vn > td > a',
     insertBefore: '#maincontent > div:nth-child(3)',
-    box: (novels) => `<div class="mainbox">
+    box: (novels, count) => `<div class="mainbox">
     <p>On List (${count})</p>
     <table class="releases">
       <tbody>
@@ -74,19 +74,34 @@ const types = {
   },
 };
 const defaultColors = {
-  highlightColor: 'rgba(190, 33, 210, 0.18)',
-  subTextColor: '#1D73B0',
+  PlayingColor: 'rgba(168.72, 5.77, 189.48, 0.28)',
+  FinishedColor: 'rgba(42.62, 210, 33, 0.25)',
+  StalledColor: 'rgba(177.26, 191.93, 9.01, 0.24)',
+  DroppedColor: 'rgba(210, 33, 33, 0.2)',
+  WishlistColor: 'rgba(33, 210, 196.99, 0.26)',
+  SubTextColor: 'rgba(29, 115, 176, 1)',
+};
+const statusTypes = {
+  Playing: 1,
+  Finished: 2,
+  Stalled: 3,
+  Dropped: 4,
+  Wishlist: 5,
 };
 
 let userIDelem = document.querySelector('#menulist > div:nth-child(3) > div > a:nth-child(1)');
 let userID = userIDelem ? userIDelem.href.match(/u\d+/)[0] : null;
 
-let colors = GM_getValue('colors', defaultColors);
+let colors = GM_getValue('colors', duplicate(defaultColors));
 
 GM_addStyle(
-  `.listinfo{color:${colors.subTextColor}!important;padding-left:15px;}
-  .colorbg{background:${colors.highlightColor}!important}
+  `.listinfo{color:${colors.SubTextColor}!important;padding-left:15px;}
   .tooltip{display:none;z-index:999;}.tooltip[data-show]{display:block;}`
+);
+GM_addStyle(
+  Object.keys(statusTypes)
+    .map((listType) => `.colorbg.${listType}{background:${colors[listType + 'Color']}!important}`)
+    .join('')
 );
 GM_addStyle(GM_getResourceText('pickrCSS'));
 
@@ -142,44 +157,55 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
     let fieldset = document.querySelector('#maincontent > form > fieldset');
     addPickerStuff(fieldset);
 
-    let highlightPicker = Pickr.create(PickrOptions('.color-picker-1', colors.highlightColor));
-    let subTextPicker = Pickr.create(PickrOptions('.color-picker-2', colors.subTextColor));
+    let subTextPicker = Pickr.create(PickrOptions('.color-picker-0', colors.SubTextColor));
+    let listPickers = Object.keys(statusTypes).map((key) => {
+      let pickerColor = key + 'Color';
+      return {
+        picker: Pickr.create(
+          PickrOptions('.color-picker-' + statusTypes[key], colors[pickerColor])
+        ),
+        color: pickerColor,
+        listType: key,
+      };
+    });
+    let allPickers = [...listPickers, { picker: subTextPicker, color: 'SubTextColor' }];
+
+    let updateColors = () => {
+      listPickers.forEach(({ color: listColor, listType }) => {
+        [...document.querySelectorAll('.colorbg.' + listType)].forEach((elem) => {
+          elem.style.cssText = `background:${colors[listColor]}!important`;
+        });
+      });
+      // [...document.querySelectorAll('.colorbg')].forEach((elem) => {
+      //   elem.style.cssText = `background:${colors.PlayingColor}!important`;
+      // });
+      [...document.querySelectorAll('.listinfo')].forEach((elem) => {
+        elem.style.cssText = `color:${colors.SubTextColor}!important`;
+      });
+    };
     let setColors = () => {
-      highlightPicker.setColor(colors.highlightColor);
-      subTextPicker.setColor(colors.subTextColor);
+      allPickers.forEach(({ picker, color }) => picker.setColor(colors[color]));
       updateColors();
     };
+
     document.querySelector('.saveColors').onclick = () => GM_setValue('colors', colors);
     document.querySelector('.resetColors').onclick = () => {
-      colors = GM_getValue('colors', defaultColors);
+      colors = GM_getValue('colors', duplicate(defaultColors));
       setColors();
     };
     document.querySelector('.resetDefaultColors').onclick = () => {
-      colors = JSON.parse(JSON.stringify(defaultColors));
+      colors = duplicate(defaultColors);
       setColors();
     };
 
     ['change', 'swatchselect', 'save'].forEach((colorEvent) =>
-      highlightPicker.on(colorEvent, (color) => {
-        colors.highlightColor = color.toRGBA().toString(2);
-        updateColors();
+      allPickers.forEach(({ picker, color: pickerColor }) => {
+        picker.on(colorEvent, (color) => {
+          colors[pickerColor] = color.toRGBA().toString(2);
+          updateColors();
+        });
       })
     );
-    ['change', 'swatchselect', 'save'].forEach((colorEvent) =>
-      subTextPicker.on(colorEvent, (color) => {
-        colors.subTextColor = color.toRGBA().toString(2);
-        updateColors();
-      })
-    );
-
-    function updateColors() {
-      [...document.querySelectorAll('.colorbg')].forEach((elem) => {
-        elem.style.cssText = `background:${colors.highlightColor}!important`;
-      });
-      [...document.querySelectorAll('.listinfo')].forEach((elem) => {
-        elem.style.cssText = `color:${colors.subTextColor}!important`;
-      });
-    }
   }
 })();
 
@@ -229,7 +255,8 @@ async function getPage(url, doc = null) {
     let vnID = elem.href.split('/').pop();
     if (vns[vnID] && vns[vnID].lists.length > 0) {
       let bgElem = type == types.Staff ? elem.parentElement.parentElement : elem.parentElement;
-      bgElem.className += 'colorbg';
+      bgElem.className += 'colorbg ';
+      bgElem.className += vns[vnID].lists.join(' ');
       elem.innerHTML = `
 <strong>
   ${elem.innerHTML}
@@ -239,9 +266,9 @@ async function getPage(url, doc = null) {
 </span>`;
 
       if (type == types.CompanyVNs) {
-        novelelements += '<li>' + elem.parentElement.innerHTML + '</li>';
+        novelelements += elem.parentElement.outerHTML;
       } else {
-        novelelements += '<tr>' + elem.parentElement.parentElement.innerHTML + '</tr>';
+        novelelements += elem.parentElement.parentElement.outerHTML;
       }
       count++;
     }
@@ -356,12 +383,28 @@ function addPickerStuff(fieldset) {
         <td colspan="2">Pick Colors</td>
       </tr>
       <tr class="newfield">
-        <td class="label">Entry Color</td>
+        <td class="label">List Text Color</td>
+        <td class="field"><div class="color-picker-0"></div></td>
+      </tr>
+      <tr class="newfield">
+        <td class="label">Playing Color</td>
         <td class="field"><div class="color-picker-1"></div></td>
       </tr>
       <tr class="newfield">
-        <td class="label">List Text Color</td>
+        <td class="label">Finished Color</td>
         <td class="field"><div class="color-picker-2"></div></td>
+      </tr>
+      <tr class="newfield">
+        <td class="label">Stalled Color</td>
+        <td class="field"><div class="color-picker-3"></div></td>
+      </tr>
+      <tr class="newfield">
+        <td class="label">Dropped Color</td>
+        <td class="field"><div class="color-picker-4"></div></td>
+      </tr>
+      <tr class="newfield">
+        <td class="label">Wishlist Color</td>
+        <td class="field"><div class="color-picker-5"></div></td>
       </tr>
     </table>
       <div class="colorbuttons">
@@ -385,125 +428,37 @@ function addPickerStuff(fieldset) {
           <td class="tc5">Note</td>
         </tr>
       </thead>
-      <tbody>
-        <tr>
-          <td class="tc1">
-            <a href="/v11856" title="フレラバ ～Friend to Lover～"> Fureraba ~Friend to Lover~ </a>
-          </td>
-          <td class="tc2">2013-06-28</td>
-          <td class="tc3"><a href="/c16555" title="望月 理奈">Mochizuki Rina</a></td>
-          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
-          <td class="tc5"></td>
-        </tr>
-        <tr>
-          <td class="tc1">
-            <a href="/v14265" title="星織ユメミライ">
-               Hoshi Ori Yume Mirai </a
-            >
-          </td>
-          <td class="tc2">2014-07-25</td>
-          <td class="tc3"><a href="/c19045" title="篠崎 真里花">Shinozaki Marika</a></td>
-          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
-          <td class="tc5"></td>
-        </tr>
-        <tr class="colorbg">
-          <td class="tc1">
-            <a href="/v15077" title="あの晴れわたる空より高く">
-              <strong> Ano Harewataru Sora yori Takaku </strong>
-              <span class="listinfo"> Finished, Voted ; Score: 10 </span></a
-            >
-          </td>
-          <td class="tc2">2014-09-26</td>
-          <td class="tc3"><a href="/c21325" title="黎明 夏帆">Reimei Kaho</a></td>
-          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
-          <td class="tc5"></td>
-        </tr>
-        <tr>
-          <td class="tc1">
-            <a href="/v15064" title="ゆきこいめると">
-              Yuki Koi Melt </a
-            >
-          </td>
-          <td class="tc2">2015-03-27</td>
-          <td class="tc3"><a href="/c24603" title="烈風寺 嘩音">Reppuuji Kanon</a></td>
-          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
-          <td class="tc5"></td>
-        </tr>
-        <tr>
-          <td class="tc1">
-            <a href="/v18131" title="まいてつ">
-               Maitetsu </a
-            >
-          </td>
-          <td class="tc2">2016-03-25</td>
-          <td class="tc3"><a href="/c39201" title="雛衣 ポーレット">Hinai Paulette</a></td>
-          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
-          <td class="tc5"></td>
-        </tr>
-        <tr>
-          <td class="tc1">
-            <a href="/v20433" title="猫忍えくすはーと">
-               Neko-nin exHeart </a
-            >
-          </td>
-          <td class="tc2">2017-02-24</td>
-          <td class="tc3"><a href="/c55101" title="風魔 たま">Fuuma Tama</a></td>
-          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
-          <td class="tc5"></td>
-        </tr>
-        <tr class="colorbg">
-          <td class="tc1">
-            <a href="/v21852" title="金色ラブリッチェ">
-              <strong> Kin'iro Loveriche </strong>
-              <span class="listinfo"> Playing </span></a
-            >
-          </td>
-          <td class="tc2">2017-12-22</td>
-          <td class="tc3">
-            <a href="/c64304" title="エロイナ・ディ・カバリェロ・イスタ"
-              >Heroina di Caballero istaa</a
-            >
-          </td>
-          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
-          <td class="tc5"></td>
-        </tr>
-        <tr>
-          <td class="tc1">
-            <a href="/v26000" title="きまぐれテンプテーション">
-               Kimagure Temptation </a
-            >
-          </td>
-          <td class="tc2">2019-09-27</td>
-          <td class="tc3"><a href="/c83876" title="クーリィ">Cooley</a></td>
-          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
-          <td class="tc5"></td>
-        </tr>
-        <tr>
-          <td class="tc1">
-            <a href="/v24689" title="スタディ§ステディ">
-               Study § Steady </a
-            >
-          </td>
-          <td class="tc2">2019-09-27</td>
-          <td class="tc3"><a href="/c77386" title="来宮 なのか">Kinomiya Nanoka</a></td>
-          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
-          <td class="tc5"></td>
-        </tr>
-        <tr class="colorbg">
-          <td class="tc1">
-            <a href="/v27449" title="ハミダシクリエイティブ">
-              <strong> Hamidashi Creative </strong>
-              <span class="listinfo"> Wishlist, Wishlist-Medium </span></a
-            >
-          </td>
-          <td class="tc2">2020-09-25</td>
-          <td class="tc3"><a href="/c91567" title="和泉 里">Izumi Miri</a></td>
-          <td class="tc4" title="あじ秋刀魚">Aji Sanma</td>
-          <td class="tc5"></td>
-        </tr>
-      </tbody>
+      <tbody><tr><td class="tc1"><a href="/v16201" title="あま恋シロップス ～恥じらう恋心でシたくなる甘神様の恋祭り～">Ama Koi Syrups ~Hajirau Koigokoro de Shitaku Naru Amagami...</a></td><td class="tc2">2015-02-27</td><td class="tc3"><a href="/c92173" title="こころ">Kokoro</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr><td class="tc1"><a href="/v16201" title="あま恋シロップス ～恥じらう恋心でシたくなる甘神様の恋祭り～">Ama Koi Syrups ~Hajirau Koigokoro de Shitaku Naru Amagami...</a></td><td class="tc2">2015-02-27</td><td class="tc3"><a href="/c41323" title="まんじゅう様">Manjuu-sama</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr class="colorbg Finished Voted"><td class="tc1"><a href="/v16044" title="サノバウィッチ">
+  <strong>
+    Sanoba Witch
+  </strong>
+  <span class="listinfo">
+    Finished, Voted ; Score: 10
+  </span></a></td><td class="tc2">2015-02-27</td><td class="tc3"><a href="/c26598" title="因幡 めぐる">Inaba Meguru</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr><td class="tc1"><a href="/v17969" title="はにかみ CLOVER">Hanikami Clover</a></td><td class="tc2">2016-01-29</td><td class="tc3"><a href="/c36027" title="周防 えみる">Suou Emiru</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr><td class="tc1"><a href="/v18147" title="間宮くんちの五つ子事情">Mamiya-kunchi no Itsutsugo Jijou</a></td><td class="tc2">2016-02-26</td><td class="tc3"><a href="/c38570" title="四条院 莉里香">Shijouin Ririka</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr class="colorbg Wishlist Wishlist-Medium"><td class="tc1"><a href="/v18148" title="ノラと皇女と野良猫ハート">
+  <strong>
+    Nora to Oujo to Noraneko Heart
+  </strong>
+  <span class="listinfo">
+    Wishlist, Wishlist-Medium
+  </span></a></td><td class="tc2">2016-02-26</td><td class="tc3"><a href="/c40408" title="黒木 未知">Kuroki Michi</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr><td class="tc1"><a href="/v18651" title="時を紡ぐ約束">Toki o Tsumugu Yakusoku</a></td><td class="tc2">2016-03-25</td><td class="tc3"><a href="/c41585" title="沢村 唯依">Sawamura Yui</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr><td class="tc1"><a href="/v20602" title="真剣で私に恋しなさい！A-5">Maji de Watashi ni Koishinasai! A-5</a></td><td class="tc2">2016-04-26</td><td class="tc3"><a href="/c56412" title="シェイラ・コロンボ">Sheila Colombo</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr class="colorbg Dropped"><td class="tc1"><a href="/v17742" title="D.S. -Dal Segno-">
+  <strong>
+    D.S. -Dal Segno-
+  </strong>
+  <span class="listinfo">
+    Dropped
+  </span></a></td><td class="tc2">2016-04-28</td><td class="tc3"><a href="/c36022" title="神月 依愛">Kouzuki Io</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr><td class="tc1"><a href="/v19141" title="クランク・イン">Crank In</a></td><td class="tc2">2017-08-31</td><td class="tc3"><a href="/c64225" title="村雲 望">Murakumo Nozomu</a></td><td class="tc4" title="仙台 エリ">Sendai Eri</td><td class="tc5"></td></tr><tr><td class="tc1"><a href="/v19841" title="ノラと皇女と野良猫ハート2">Nora to Oujo to Noraneko Heart 2</a></td><td class="tc2">2017-10-27</td><td class="tc3"><a href="/c40408" title="黒木 未知">Kuroki Michi</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr class="colorbg Playing"><td class="tc1"><a href="/v21852" title="金色ラブリッチェ">
+  <strong>
+    Kin'iro Loveriche
+  </strong>
+  <span class="listinfo">
+    Playing
+  </span></a></td><td class="tc2">2017-12-22</td><td class="tc3"><a href="/c64303" title="妃 玲奈">Kisaki Reina</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr>
+<tr><td class="tc1"><a href="/v25725" title="SHUFFLE! エピソード2～神にも悪魔にも狙われている男～">Shuffle! Episode 2 ~Kami ni mo Akuma ni mo Nerawareteiru ...</a></td><td class="tc2">2020-05-29</td><td class="tc3"><a href="/c85213" title="リムストン">Limestone</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr><td class="tc1"><a href="/v29057" title="我が姫君に栄冠を">Waga Himegimi ni Eikan o</a></td><td class="tc2">2021-03-26</td><td class="tc3"><a href="/c92523" title="ユーミル">Ymir</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr class="colorbg Stalled"><td class="tc1"><a href="/v30724" title="悠久のカンパネラ">Yuukyuu no Campanella</a><span class="listinfo">Stalled</span></td><td class="tc2"><b class="future">2021-07-30</b></td><td class="tc3"><a href="/c96288" title="シャルロット・ヴィ・アトラスティア">Charlotte vie Atrustia</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr></tbody>
     </table>
-  </div>
-  `)
+  </div>`)
   );
+}
+
+function duplicate(obj) {
+  return JSON.parse(JSON.stringify(obj));
 }
