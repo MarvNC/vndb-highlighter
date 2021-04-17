@@ -3,6 +3,7 @@
 // @namespace   https://github.com/MarvNC
 // @match       https://vndb.org/s*
 // @match       https://vndb.org/p*
+// @match       https://vndb.org/v*
 // @grant       GM_getValue
 // @grant       GM_setValue
 // @grant       GM_addStyle
@@ -13,15 +14,11 @@
 // @description Highlights entries on VNDB that are on a logged in user's vn list.
 // ==/UserScript==
 
-// 10 minute wait
-const fetchWait = 600000;
+const fetchListMs = 600000;
 const listExportUrl = (id) => `https://vndb.org/${id}/list-export/xml`;
-const highlightColor = {
-  main: 'rgba(190, 33, 210, 0.18)',
-  finished: 'rgba(190, 33, 210, 0.18)',
-};
 const types = {
-  STAFF: {
+  VN: 'loli',
+  Staff: {
     vnSelector: 'tr > td.tc1 > a',
     insertBefore: '#maincontent > .boxtitle',
     box: (novels) => `<div class="mainbox browse staffroles">
@@ -41,7 +38,7 @@ const types = {
   </table>
 </div>`,
   },
-  VNS: {
+  CompanyVNs: {
     vnSelector: '#maincontent > div.mainbox > ul > li > a',
     insertBefore: '#maincontent > div:nth-child(3)',
     box: (novels) => `<div class="mainbox">
@@ -52,7 +49,7 @@ const types = {
   </div>
   `,
   },
-  RELEASES: {
+  Releases: {
     vnSelector: 'tbody > tr.vn > td > a',
     insertBefore: '#maincontent > div:nth-child(3)',
     box: (novels) => `<div class="mainbox">
@@ -70,25 +67,113 @@ const types = {
 let userIDelem = document.querySelector('#menulist > div:nth-child(3) > div > a:nth-child(1)');
 let userID = userIDelem ? userIDelem.href.match(/u\d+/)[0] : null;
 
-let page;
-if (document.URL.match('vndb.org/s')) page = types.STAFF;
-else if (document.URL.match('vndb.org/p')) {
-  page = document.URL.match(/vn$/) ? types.VNS : types.RELEASES;
-}
+let colors = GM_getValue('colors', {
+  highlightColor: 'rgba(190, 33, 210, 0.18)',
+  subTextColor: '#37a',
+});
 
-console.log(page);
+GM_addStyle(
+  `.listinfo{color:${colors.subTextColor}!important;padding-left:15px;}
+  .colorbg{background:${colors.highlightColor}!important}
+  .tooltip{visibility:hidden;position:absolute;}.tooltip:hover{visibility:visible}`
+);
+
+let vns;
+if (!GM_getValue('pages', null)) GM_setValue('pages', {});
 
 (async function () {
-  // set colors
-  let colors = GM_getValue('colors', {
-    highlightColor: 'rgba(190, 33, 210, 0.18)',
-    subTextColor: '#37a',
-  });
-  GM_addStyle(`.listinfo{color:${colors.subTextColor} !important;padding-left:15px;}`);
+  await updateUserList();
 
-  // get user list
+  let type = getType(document.URL, document);
+
+  if (type == types.VN) {
+    let pages = [...document.querySelectorAll('a[href]')].filter((elem) =>
+      elem.href.match(/vndb.org\/[sp]\d+/)
+    );
+    for (page of pages) {
+      console.log(`Fetching page: ${page.innerHTML} - ${page.href}`);
+      let pageInfo = await getPage(page.href);
+    }
+  } else {
+    let page = await getPage(document.URL, document);
+    page.before.parentElement.insertBefore(page.table, page.before);
+    if (type == types.Staff) {
+      page.table.parentElement.insertBefore(
+        createElementFromHTML(`<h1 class="boxtitle">On List (${page.count})</h1>`),
+        page.table
+      );
+    }
+  }
+})();
+
+async function getPage(url, doc = null) {
+  let type,
+    table,
+    before,
+    count = 0;
+
+  if (!doc) {
+    if (url.match('vndb.org/p')) url = 'https://vndb.org/' + url.match(/p\d+/)[0] + '/vn';
+
+    if (GM_getValue('pages', null)[url]) return GM_getValue('pages', null)[url];
+
+    doc = document.createElement('html');
+    doc.innerHTML = await fetch(url).then((response) => response.text());
+
+    type = getType(url, doc);
+  }
+
+  type = getType(url, doc);
+  vns = GM_getValue('vns', null);
+
+  let vnElems = [...doc.querySelectorAll(type.vnSelector)];
+  let novelelements = '';
+  vnElems.forEach((elem) => {
+    let vnID = elem.href.split('/').pop();
+    if (vns[vnID] && vns[vnID].lists.length > 0) {
+      console.log(vns[vnID]);
+      let bgElem = type == types.Staff ? elem.parentElement.parentElement : elem.parentElement;
+      bgElem.className += 'colorbg';
+      elem.innerHTML = `
+<strong>
+  ${elem.innerHTML}
+</strong>
+<span class="listinfo">
+  ${vns[vnID].lists.join(', ') + (vns[vnID].vote ? ' ; Score: ' + vns[vnID].vote : '')}
+</span>`;
+
+      if (type == types.CompanyVNs) {
+        novelelements += '<li>' + elem.parentElement.innerHTML + '</li>';
+      } else {
+        novelelements += '<tr>' + elem.parentElement.parentElement.innerHTML + '</tr>';
+      }
+      count++;
+    }
+  });
+
+  table = createElementFromHTML(type.box(novelelements));
+  before = doc.querySelector(type.insertBefore);
+
+  let pages = GM_getValue('pages');
+  pages[url] = table.outerHTML;
+  GM_setValue('pages', pages);
+  return { type, table, before, count };
+}
+
+function getType(url, doc) {
+  if (url.match('vndb.org/s')) return types.Staff;
+  else if (url.match('vndb.org/p')) {
+    let text = doc.querySelector('#maincontent > div:nth-child(3) > ul > li.tabselected > a')
+      .innerText;
+    return text == 'Releases' ? types.Releases : types.CompanyVNs;
+  } else if (url.match('vndb.org/v')) {
+    return types.VN;
+  }
+}
+
+async function updateUserList() {
   console.log('Last List Fetch: ' + new Date(GM_getValue('lastFetch')));
-  if (GM_getValue('lastFetch', 0) + fetchWait < new Date().valueOf()) {
+  if (GM_getValue('lastFetch', 0) + fetchListMs < new Date().valueOf()) {
     GM_setValue('lastFetch', new Date().valueOf());
     let response = await fetch(listExportUrl(userID)).then((response) => response.text());
     let parser = new DOMParser();
@@ -106,45 +191,7 @@ console.log(page);
     });
     GM_setValue('vns', vns);
   }
-
-  let vns = GM_getValue('vns', null);
-
-  // go through links on page that are vns
-  let vnElems = [...document.querySelectorAll(page.vnSelector)];
-  let novelelements = '';
-  vnElems.forEach((elem) => {
-    let vnID = elem.href.split('/').pop();
-    if (vns[vnID] && vns[vnID].lists.length > 0) {
-      console.log(vns[vnID]);
-      let bgElem = page == types.STAFF ? elem.parentElement.parentElement : elem.parentElement;
-      bgElem.style.background = colors.highlightColor;
-      elem.innerHTML = `
-<strong>
-  ${elem.innerHTML}
-</strong>
-<span class="listinfo">
-  ${vns[vnID].lists.join(', ') + (vns[vnID].vote ? ' ; Score: ' + vns[vnID].vote : '')}
-</span>`;
-
-      if (page == types.VNS) {
-        novelelements += '<li>' + elem.parentElement.innerHTML + '</li>';
-      } else {
-        novelelements += '<tr>' + elem.parentElement.parentElement.innerHTML + '</tr>';
-      }
-    }
-  });
-
-  console.log(novelelements);
-  let table = createElementFromHTML(page.box(novelelements));
-  let before = document.querySelector(page.insertBefore);
-  before.parentElement.insertBefore(table, before);
-  if (page == types.STAFF) {
-    table.parentElement.insertBefore(
-      createElementFromHTML(`<h1 class="boxtitle">On List</h1>`),
-      table
-    );
-  }
-})();
+}
 
 function createElementFromHTML(htmlString) {
   var div = document.createElement('div');
