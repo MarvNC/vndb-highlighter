@@ -5,7 +5,7 @@
 // @match       https://vndb.org/p*
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/u*/edit
-// @version     1.22
+// @version     1.23
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
@@ -13,11 +13,14 @@
 // @grant       GM_getValue
 // @grant       GM_setValue
 // @grant       GM_addStyle
+// @grant       GM_getResourceText
 // @require     https://unpkg.com/@popperjs/core@2.9.2/dist/umd/popper.min.js
 // @run-at      document-idle
 // ==/UserScript==
 
+const delayMs = 200;
 const fetchListMs = 600000;
+const updatePageMs = 2592000000;
 const listExportUrl = (id) => `https://vndb.org/${id}/list-export/xml`;
 const types = {
   VN: 'loli',
@@ -129,7 +132,6 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
       );
     }
   } else if (type == types.Settings) {
-    
   }
 })();
 
@@ -142,10 +144,30 @@ async function getPage(url, doc = null) {
   if (!doc) {
     if (url.match('vndb.org/p')) url = 'https://vndb.org/' + url.match(/p\d+/)[0] + '/vn';
 
-    if (GM_getValue('pages', null)[url]) return GM_getValue('pages', null)[url];
+    if (
+      GM_getValue('pages', null)[url] &&
+      GM_getValue('pages', null)[url].lastUpdate + updatePageMs > new Date().valueOf()
+    ) {
+      return GM_getValue('pages', null)[url];
+    }
 
     doc = document.createElement('html');
-    doc.innerHTML = await fetch(url).then((response) => response.text());
+
+    let responseText,
+      waitMs = delayMs,
+      success = false;
+    while (!success) {
+      await fetch(url).then(async (response) => {
+        responseText = await response.text();
+        success = response.ok;
+        if (!response.ok) {
+          waitMs *= 2;
+          console.log('Failed response, new wait:' + waitMs)
+        }
+      });
+      await timer(waitMs);
+    }
+    doc.innerHTML = responseText;
 
     type = getType(url, doc);
   }
@@ -158,7 +180,6 @@ async function getPage(url, doc = null) {
   vnElems.forEach((elem) => {
     let vnID = elem.href.split('/').pop();
     if (vns[vnID] && vns[vnID].lists.length > 0) {
-      console.log(vns[vnID]);
       let bgElem = type == types.Staff ? elem.parentElement.parentElement : elem.parentElement;
       bgElem.className += 'colorbg';
       elem.innerHTML = `
@@ -182,7 +203,7 @@ async function getPage(url, doc = null) {
   before = doc.querySelector(type.insertBefore);
 
   let pages = GM_getValue('pages');
-  pages[url] = { table: table, count: count };
+  pages[url] = { count, lastUpdate: new Date().valueOf(), table };
   GM_setValue('pages', pages);
   return { type, table, before, count };
 }
@@ -206,7 +227,7 @@ async function updateUserList() {
     GM_setValue('lastFetch', new Date().valueOf());
     let response = await fetch(listExportUrl(userID)).then((response) => response.text());
     let parser = new DOMParser();
-    xmlDoc = parser.parseFromString(response, 'text/xml');
+    let xmlDoc = parser.parseFromString(response, 'text/xml');
     let vnsList = [...xmlDoc.querySelectorAll('vndb-export > vns > vn')];
     let vns = {};
     vnsList.forEach((vn) => {
@@ -226,6 +247,9 @@ function createElementFromHTML(htmlString) {
   var div = document.createElement('div');
   div.innerHTML = htmlString.trim();
 
-  // Change this to div.childNodes to support multiple top-level nodes
   return div.firstChild;
+}
+
+function timer(ms) {
+  return new Promise((res) => setTimeout(res, ms));
 }
