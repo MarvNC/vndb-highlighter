@@ -1,6 +1,6 @@
-### [Install](https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js)
+### [Install](https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js)
 
-# vndb-list-info
+# vndb-highlighter
 
 A userscript to add personalised info to staff and producers on vndb.
 
