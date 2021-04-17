@@ -360,7 +360,7 @@ function addPickerStuff(fieldset) {
         <td class="field"><div class="color-picker-1"></div></td>
       </tr>
       <tr class="newfield">
-        <td class="label">List Test Color</td>
+        <td class="label">List Text Color</td>
         <td class="field"><div class="color-picker-2"></div></td>
       </tr>
     </table>
