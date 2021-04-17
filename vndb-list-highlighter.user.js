@@ -5,7 +5,7 @@
 // @match       https://vndb.org/p*
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/u*/edit
-// @version     1.23
+// @version     1.24
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-list-highlighter/main/vndb-list-highlighter.user.js
@@ -28,7 +28,8 @@ const types = {
   Staff: {
     vnSelector: 'tr > td.tc1 > a',
     insertBefore: '#maincontent > .boxtitle',
-    box: (novels) => `<div class="mainbox browse staffroles">
+    box: (novels, count) => `<div class="mainbox browse staffroles">
+  <p>On List (${count})</p>
   <table class="stripe">
     <thead>
       <tr>
@@ -48,8 +49,8 @@ const types = {
   CompanyVNs: {
     vnSelector: '#maincontent > div.mainbox > ul > li > a',
     insertBefore: '#maincontent > div:nth-child(3)',
-    box: (novels) => `<div class="mainbox">
-    <h1>On List</h1>
+    box: (novels, count) => `<div class="mainbox">
+    <p>On List (${count})</p>
     <ul class="prodvns">
       ${novels}
     </ul>
@@ -60,7 +61,7 @@ const types = {
     vnSelector: 'tbody > tr.vn > td > a',
     insertBefore: '#maincontent > div:nth-child(3)',
     box: (novels) => `<div class="mainbox">
-    <h1>Releases</h1>
+    <p>On List (${count})</p>
     <table class="releases">
       <tbody>
         ${novels}
@@ -100,7 +101,14 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
     for (let pageElem of pages) {
       console.log(`Fetching page: ${pageElem.innerHTML} - ${pageElem.href}`);
       let pageInfo = await getPage(pageElem.href);
-      let tooltip = createElementFromHTML(pageInfo.table);
+      let tooltip;
+      if (pageInfo.count != 0) {
+        tooltip = createElementFromHTML(pageInfo.table);
+      } else {
+        tooltip = createElementFromHTML(`<div class="mainbox">
+        <p>No Novels on List</p>
+      </div>`);
+      }
       tooltip.className += ' tooltip';
       pageElem.prepend(tooltip);
       let popperInstance = Popper.createPopper(pageElem, tooltip, {
@@ -124,12 +132,10 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
     }
   } else if ([types.CompanyVNs, types.Releases, types.Staff].includes(type)) {
     let page = await getPage(document.URL, document);
-    page.before.parentElement.insertBefore(createElementFromHTML(page.table), page.before);
+    let table = createElementFromHTML(page.table);
+    page.before.parentElement.insertBefore(table, page.before);
     if (type == types.Staff) {
-      page.table.parentElement.insertBefore(
-        createElementFromHTML(`<h1 class="boxtitle">On List (${page.count})</h1>`),
-        page.table
-      );
+      table.parentElement.insertBefore(createElementFromHTML(), table);
     }
   } else if (type == types.Settings) {
   }
@@ -162,7 +168,7 @@ async function getPage(url, doc = null) {
         success = response.ok;
         if (!response.ok) {
           waitMs *= 2;
-          console.log('Failed response, new wait:' + waitMs)
+          console.log('Failed response, new wait:' + waitMs);
         }
       });
       await timer(waitMs);
@@ -199,7 +205,7 @@ async function getPage(url, doc = null) {
     }
   });
 
-  table = type.box(novelelements);
+  table = type.box(novelelements, count);
   before = doc.querySelector(type.insertBefore);
 
   let pages = GM_getValue('pages');
