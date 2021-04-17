@@ -22,7 +22,7 @@
 
 const delayMs = 200;
 const fetchListMs = 600000;
-const updatePageMs = 600000;
+const updatePageMs = 3600000;
 const listExportUrl = (id) => `https://vndb.org/${id}/list-export/xml`;
 const types = {
   VN: 'loli',
