@@ -6,7 +6,7 @@
 // @match       https://vndb.org/p*
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/u*/edit
-// @version     1.41
+// @version     1.42
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -118,20 +118,21 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
     let pages = [...document.querySelectorAll('a[href]')].filter((elem) =>
       elem.href.match(/vndb.org\/[sp]\d+/)
     );
-    for (let pageElem of pages) {
-      console.log(`Fetching page: ${pageElem.innerHTML} - ${pageElem.href}`);
-      let pageInfo = await getPage(pageElem.href);
+    for (let entryElem of pages) {
+      console.log(`Fetching page: ${entryElem.innerHTML} - ${entryElem.href}`);
+      let pageInfo = await getPage(entryElem.href);
       let tooltip;
       if (pageInfo.count != 0) {
         tooltip = createElementFromHTML(pageInfo.table);
+        entryElem.innerText += ` (${pageInfo.count})`;
       } else {
         tooltip = createElementFromHTML(`<div class="mainbox">
         <p>No Novels on List</p>
       </div>`);
       }
       tooltip.className += ' tooltip';
-      pageElem.prepend(tooltip);
-      let popperInstance = Popper.createPopper(pageElem, tooltip, {
+      entryElem.prepend(tooltip);
+      let popperInstance = Popper.createPopper(entryElem, tooltip, {
         placement: 'top',
       });
       function show() {
@@ -144,10 +145,10 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
       const showEvents = ['mouseenter', 'focus'];
       const hideEvents = ['mouseleave', 'blur'];
       showEvents.forEach((event) => {
-        pageElem.addEventListener(event, show);
+        entryElem.addEventListener(event, show);
       });
       hideEvents.forEach((event) => {
-        pageElem.addEventListener(event, hide);
+        entryElem.addEventListener(event, hide);
       });
     }
   } else if ([types.CompanyVNs, types.Releases, types.Staff].includes(type)) {
@@ -177,9 +178,6 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
           elem.style.cssText = `background:${colors[listColor]}!important`;
         });
       });
-      // [...document.querySelectorAll('.colorbg')].forEach((elem) => {
-      //   elem.style.cssText = `background:${colors.PlayingColor}!important`;
-      // });
       [...document.querySelectorAll('.listinfo')].forEach((elem) => {
         elem.style.cssText = `color:${colors.SubTextColor}!important`;
       });
@@ -263,7 +261,7 @@ async function getPage(url, doc = null) {
   ${elem.innerHTML}
 </strong>
 <span class="listinfo">
-  ${vns[vnID].lists.join(', ') + (vns[vnID].vote ? ' ; Score: ' + vns[vnID].vote : '')}
+  ${vns[vnID].lists.join(', ') + (vns[vnID].vote ? ' | Score: ' + vns[vnID].vote : '')}
 </span>`;
 
       if (type == types.CompanyVNs) {
