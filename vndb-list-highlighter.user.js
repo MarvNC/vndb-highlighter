@@ -5,8 +5,9 @@
 // @match       https://vndb.org/s*
 // @match       https://vndb.org/p*
 // @match       https://vndb.org/v*
+// @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.42
+// @version     1.43
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -288,7 +289,7 @@ function getType(url, doc) {
     let text = doc.querySelector('#maincontent > div:nth-child(3) > ul > li.tabselected > a')
       .innerText;
     return text == 'Releases' ? types.Releases : types.CompanyVNs;
-  } else if (url.match('vndb.org/v')) {
+  } else if (url.match(/vndb.org\/[vc]/)) {
     return types.VN;
   } else if (url.match(/vndb.org\/u\d+\/edit/)) {
     return types.Settings;
