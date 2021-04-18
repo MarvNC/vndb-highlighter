@@ -1,5 +1,7 @@
 ### [Install](https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js)
 
+(With [Violentmonkey](https://violentmonkey.github.io/))
+
 # vndb-highlighter
 
 A userscript to add personalised info to staff and producers on vndb.
@@ -21,5 +23,5 @@ Note that the userscript currently has a limit of ten minutes between fetching t
 ## Images
 
 ![highlight](https://files.catbox.moe/43me1i.png)
-![tooltips](https://files.catbox.moe/niw96u.png)
+![tooltips](https://files.catbox.moe/dciikb.png)
 ![colorpicker](https://files.catbox.moe/h27u9l.png)
