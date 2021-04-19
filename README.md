@@ -8,7 +8,7 @@ A userscript to add personalised info to staff and producers on vndb.
 
 ## Highlighting
 
-This userscript will work on staff and company pages to highlight entries that are on your VNDB list.
+This userscript will work on staff and producer pages to highlight entries that are on your VNDB list.
 
 ## Tooltips
 

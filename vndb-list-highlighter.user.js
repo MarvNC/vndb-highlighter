@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.43
+// @version     1.44
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -127,9 +127,7 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
         tooltip = createElementFromHTML(pageInfo.table);
         entryElem.innerText += ` (${pageInfo.count})`;
       } else {
-        tooltip = createElementFromHTML(`<div class="mainbox">
-        <p>No Novels on List</p>
-      </div>`);
+        tooltip = createElementFromHTML(`<div class="mainbox"><p>No Novels on List</p></div>`);
       }
       tooltip.className += ' tooltip';
       entryElem.prepend(tooltip);
@@ -173,7 +171,8 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
     });
     let allPickers = [...listPickers, { picker: subTextPicker, color: 'SubTextColor' }];
 
-    let updateColors = () => {
+    // updates the elements' css styles on the page
+    let updateColorsStyle = () => {
       listPickers.forEach(({ color: listColor, listType }) => {
         [...document.querySelectorAll('.colorbg.' + listType)].forEach((elem) => {
           elem.style.cssText = `background:${colors[listColor]}!important`;
@@ -183,26 +182,26 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
         elem.style.cssText = `color:${colors.SubTextColor}!important`;
       });
     };
-    let setColors = () => {
+    let setPickerColors = () => {
       allPickers.forEach(({ picker, color }) => picker.setColor(colors[color]));
-      updateColors();
+      updateColorsStyle();
     };
 
     document.querySelector('.saveColors').onclick = () => GM_setValue('colors', colors);
     document.querySelector('.resetColors').onclick = () => {
       colors = GM_getValue('colors', duplicate(defaultColors));
-      setColors();
+      setPickerColors();
     };
     document.querySelector('.resetDefaultColors').onclick = () => {
       colors = duplicate(defaultColors);
-      setColors();
+      setPickerColors();
     };
 
-    ['change', 'swatchselect', 'save'].forEach((colorEvent) =>
+    ['change', 'swatchselect', 'save', 'clear', 'cancel', 'hide', 'show'].forEach((colorEvent) =>
       allPickers.forEach(({ picker, color: pickerColor }) => {
-        picker.on(colorEvent, (color) => {
-          colors[pickerColor] = color.toRGBA().toString(2);
-          updateColors();
+        picker.on(colorEvent, () => {
+          colors[pickerColor] = picker.getColor().toRGBA().toString(2);
+          updateColorsStyle();
         });
       })
     );
