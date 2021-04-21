@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.44
+// @version     1.5
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -120,40 +120,57 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
       elem.href.match(/vndb.org\/[sp]\d+/)
     );
     for (let entryElem of pages) {
-      console.log(`Fetching page: ${entryElem.innerHTML} - ${entryElem.href}`);
-      let pageInfo = await getPage(entryElem.href);
-      let tooltip;
-      if (pageInfo.count != 0) {
-        tooltip = createElementFromHTML(pageInfo.table);
-        entryElem.innerText += ` (${pageInfo.count})`;
-      } else {
-        tooltip = createElementFromHTML(`<div class="mainbox"><p>No Novels on List</p></div>`);
-      }
+      let span = document.createElement('span');
+      entryElem.append(span);
+      let tooltip = createElementFromHTML(`<div class="mainbox"><p>Fetching Data</p></div>`);
       tooltip.className += ' tooltip';
       entryElem.prepend(tooltip);
-      let popperInstance = Popper.createPopper(entryElem, tooltip, {
-        placement: 'top',
-      });
-      function show() {
-        tooltip.setAttribute('data-show', '');
-        popperInstance.update();
-      }
-      function hide() {
-        tooltip.removeAttribute('data-show');
-      }
-      const showEvents = ['mouseenter', 'focus'];
-      const hideEvents = ['mouseleave', 'blur'];
-      showEvents.forEach((event) => {
-        entryElem.addEventListener(event, show);
-      });
-      hideEvents.forEach((event) => {
-        entryElem.addEventListener(event, hide);
+
+      let makePopper = (parent, elem) => {
+        let popperInstance = Popper.createPopper(parent, elem, {
+          placement: 'top',
+        });
+        function show() {
+          elem.setAttribute('data-show', '');
+          popperInstance.update();
+        }
+        function hide() {
+          elem.removeAttribute('data-show');
+        }
+        const showEvents = ['mouseenter', 'focus'];
+        const hideEvents = ['mouseleave', 'blur'];
+        showEvents.forEach((event) => {
+          parent.addEventListener(event, show);
+        });
+        hideEvents.forEach((event) => {
+          parent.addEventListener(event, hide);
+        });
+      };
+
+      makePopper(entryElem, tooltip);
+
+      getPage(entryElem.href, null, (info) => {
+        let newTable;
+        if (info.count > 0) {
+          newTable = createElementFromHTML(info.table);
+          span.innerText = ` (${info.count})`;
+        } else {
+          newTable = createElementFromHTML(
+            `<div class="mainbox"><p>No Novels on List (of ${info.total})</p></div>`
+          );
+        }
+        tooltip = entryElem.replaceChild(newTable, tooltip);
+        tooltip = newTable;
+        tooltip.className += ' tooltip';
+        makePopper(entryElem, tooltip);
       });
     }
   } else if ([types.CompanyVNs, types.Releases, types.Staff].includes(type)) {
-    let page = await getPage(document.URL, document);
-    let table = createElementFromHTML(page.table);
-    page.before.parentElement.insertBefore(table, page.before);
+    getPage(document.URL, document, (info) => {
+      let table = createElementFromHTML(info.table);
+      let before = document.querySelector(type.insertBefore);
+      before.parentElement.insertBefore(table, before);
+    });
   } else if (type == types.Settings) {
     let fieldset = document.querySelector('#maincontent > form > fieldset');
     addPickerStuff(fieldset);
@@ -208,43 +225,62 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
   }
 })();
 
-async function getPage(url, doc = null) {
+let queue = [];
+let resolvers = {};
+(async function () {
+  let waitMs = delayMs;
+  while (true) {
+    if (queue.length > 0) {
+      let currURL = queue[0];
+      console.log(`Getting ${currURL}: ${queue.length} pages remaining`);
+      let response = await fetch(currURL);
+      if (response.ok) {
+        waitMs = delayMs;
+
+        let responseText = await response.text();
+        resolvers[currURL].forEach((resolver) => resolver(responseText));
+        queue.shift();
+      } else {
+        waitMs *= 2;
+        console.log('Failed response, new wait:' + waitMs);
+      }
+    }
+    await timer(waitMs);
+  }
+})();
+
+async function getPage(url, doc = null, updateInfo) {
   let type,
     table,
-    before,
-    count = 0;
+    count = 0,
+    total = 0;
+
+  let updateStuff = (info, div, span = null) => {
+    if (info.count > 0) {
+      div.innerHTML = info.table;
+    } else div.innerHTML = `<div class="mainbox"><p>No Novels on List (of ${info.total})</p></div>`;
+    if (span && info.count > 0) span.innerText = ` (${info.count})`;
+  };
 
   if (!doc) {
     if (url.match('vndb.org/p')) url = 'https://vndb.org/' + url.match(/p\d+/)[0] + '/vn';
 
-    if (
-      GM_getValue('pages', null)[url] &&
-      GM_getValue('pages', null)[url].lastUpdate + updatePageMs > new Date().valueOf()
-    ) {
-      return GM_getValue('pages', null)[url];
+    if (GM_getValue('pages', null)[url]) {
+      updateInfo(GM_getValue('pages', null)[url]);
+      if (GM_getValue('pages', null)[url].lastUpdate + updatePageMs > new Date().valueOf()) return;
     }
 
     doc = document.createElement('html');
 
-    let responseText,
-      waitMs = delayMs,
-      success = false;
-    while (!success) {
-      await fetch(url).then(async (response) => {
-        responseText = await response.text();
-        success = response.ok;
-        if (!response.ok) {
-          waitMs *= 2;
-          console.log('Failed response, new wait:' + waitMs);
-        }
-      });
-      await timer(waitMs);
+    let [promise, resolver] = createPromise();
+    if (resolvers[url]) resolvers[url].push(resolver);
+    else {
+      resolvers[url] = [resolver];
+      queue.push(url);
     }
-    doc.innerHTML = responseText;
 
-    type = getType(url, doc);
+    doc.innerHTML = await promise;
   }
-
   type = getType(url, doc);
   vns = GM_getValue('vns', null);
 
@@ -256,13 +292,10 @@ async function getPage(url, doc = null) {
       let bgElem = type == types.Staff ? elem.parentElement.parentElement : elem.parentElement;
       bgElem.className += 'colorbg ';
       bgElem.className += vns[vnID].lists.join(' ');
-      elem.innerHTML = `
-<strong>
-  ${elem.innerHTML}
-</strong>
-<span class="listinfo">
-  ${vns[vnID].lists.join(', ') + (vns[vnID].vote ? ' | Score: ' + vns[vnID].vote : '')}
-</span>`;
+      elem.innerHTML = `<strong>${elem.innerHTML}</strong>
+  <span class="listinfo">
+    ${vns[vnID].lists.join(', ') + (vns[vnID].vote ? ' | Score: ' + vns[vnID].vote : '')}
+  </span>`;
 
       if (type == types.CompanyVNs) {
         novelelements += elem.parentElement.outerHTML;
@@ -271,22 +304,22 @@ async function getPage(url, doc = null) {
       }
       count++;
     }
+    total++;
   });
+  table = type.box(novelelements, count + '/' + total);
 
-  table = type.box(novelelements, count);
-  before = doc.querySelector(type.insertBefore);
+  updateInfo({ count, total, table });
+  // updateStuff({ count, total, table }, parent, span);
 
   let pages = GM_getValue('pages');
-  pages[url] = { count, lastUpdate: new Date().valueOf(), table };
+  pages[url] = { count, total, lastUpdate: new Date().valueOf(), table };
   GM_setValue('pages', pages);
-  return { type, table, before, count };
 }
 
 function getType(url, doc) {
   if (url.match('vndb.org/s')) return types.Staff;
   else if (url.match('vndb.org/p')) {
-    let text = doc.querySelector('#maincontent > div:nth-child(3) > ul > li.tabselected > a')
-      .innerText;
+    let text = document.querySelectorAll('.tabselected')[1].innerText;
     return text == 'Releases' ? types.Releases : types.CompanyVNs;
   } else if (url.match(/vndb.org\/[vc]/)) {
     return types.VN;
@@ -432,7 +465,7 @@ function addPickerStuff(fieldset) {
     Sanoba Witch
   </strong>
   <span class="listinfo">
-    Finished, Voted ; Score: 10
+    Finished, Voted | Score: 10
   </span></a></td><td class="tc2">2015-02-27</td><td class="tc3"><a href="/c26598" title="因幡 めぐる">Inaba Meguru</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr><td class="tc1"><a href="/v17969" title="はにかみ CLOVER">Hanikami Clover</a></td><td class="tc2">2016-01-29</td><td class="tc3"><a href="/c36027" title="周防 えみる">Suou Emiru</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr><td class="tc1"><a href="/v18147" title="間宮くんちの五つ子事情">Mamiya-kunchi no Itsutsugo Jijou</a></td><td class="tc2">2016-02-26</td><td class="tc3"><a href="/c38570" title="四条院 莉里香">Shijouin Ririka</a></td><td class="tc4" title="遥 そら">Haruka Sora</td><td class="tc5"></td></tr><tr class="colorbg Wishlist Wishlist-Medium"><td class="tc1"><a href="/v18148" title="ノラと皇女と野良猫ハート">
   <strong>
     Nora to Oujo to Noraneko Heart
@@ -460,4 +493,14 @@ function addPickerStuff(fieldset) {
 
 function duplicate(obj) {
   return JSON.parse(JSON.stringify(obj));
+}
+
+function createPromise() {
+  let resolver;
+  return [
+    new Promise((resolve, reject) => {
+      resolver = resolve;
+    }),
+    resolver,
+  ];
 }
