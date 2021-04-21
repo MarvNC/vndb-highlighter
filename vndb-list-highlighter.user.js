@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.5
+// @version     1.51
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -255,13 +255,6 @@ async function getPage(url, doc = null, updateInfo) {
     count = 0,
     total = 0;
 
-  let updateStuff = (info, div, span = null) => {
-    if (info.count > 0) {
-      div.innerHTML = info.table;
-    } else div.innerHTML = `<div class="mainbox"><p>No Novels on List (of ${info.total})</p></div>`;
-    if (span && info.count > 0) span.innerText = ` (${info.count})`;
-  };
-
   if (!doc) {
     if (url.match('vndb.org/p')) url = 'https://vndb.org/' + url.match(/p\d+/)[0] + '/vn';
 
@@ -309,7 +302,6 @@ async function getPage(url, doc = null, updateInfo) {
   table = type.box(novelelements, count + '/' + total);
 
   updateInfo({ count, total, table });
-  // updateStuff({ count, total, table }, parent, span);
 
   let pages = GM_getValue('pages');
   pages[url] = { count, total, lastUpdate: new Date().valueOf(), table };
@@ -319,7 +311,7 @@ async function getPage(url, doc = null, updateInfo) {
 function getType(url, doc) {
   if (url.match('vndb.org/s')) return types.Staff;
   else if (url.match('vndb.org/p')) {
-    let text = document.querySelectorAll('.tabselected')[1].innerText;
+    let text = doc.querySelectorAll('.tabselected')[1].innerText;
     return text == 'Releases' ? types.Releases : types.CompanyVNs;
   } else if (url.match(/vndb.org\/[vc]/)) {
     return types.VN;
