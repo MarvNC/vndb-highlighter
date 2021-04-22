@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.54
+// @version     1.55
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -22,7 +22,7 @@
 // @run-at      document-idle
 // ==/UserScript==
 
-let delayMs = 400;
+let delayMs = 200;
 const fetchListMs = 600000;
 const updatePageMs = 86400000;
 const listExportUrl = (id) => `https://vndb.org/${id}/list-export/xml`;
@@ -244,32 +244,60 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
 let queue = [];
 let prioQueue = [];
 let resolvers = {};
+let active = false;
 (async function () {
-  let waitMs = delayMs;
   while (true) {
-    if (prioQueue.length > 0) {
-      queue = queue.filter((url) => !prioQueue.includes(url));
-      queue.unshift(...prioQueue);
-      prioQueue = [];
+    if (active || prioQueue.length > 0) {
+      let currURL;
+      if (prioQueue.length > 0) {
+        currURL = prioQueue.shift();
+        console.log(`Priority: getting ${currURL}, waiting ${delayMs} ms`);
+      } else if (queue.length > 0) {
+        currURL = queue.shift();
+        console.log(`Getting ${currURL}: ${queue.length} pages remaining, waiting ${delayMs} ms`);
+      }
+      let responseText = await getUrl(currURL);
+      resolvers[currURL].forEach((resolver) => resolver(responseText));
     }
-    if (queue.length > 0) {
-      let currURL = queue[0];
-      console.log(`Getting ${currURL}: ${queue.length} pages remaining`);
-      let response = await fetch(currURL);
-      if (response.ok) {
-        waitMs = delayMs;
+    await timer(delayMs);
+  }
+})();
 
-        let responseText = await response.text();
-        resolvers[currURL].forEach((resolver) => resolver(responseText));
-        queue.shift();
-      } else {
-        waitMs *= 2;
-        delayMs *= 1.2;
-        delayMs = Math.round(delayMs);
-        console.log('Failed response, new wait:' + waitMs);
+async function getUrl(url) {
+  let response = await fetch(url);
+  let waitMs = delayMs;
+  while (!response.ok) {
+    response = await fetch(url);
+    waitMs *= 2;
+    delayMs *= 1.2;
+    delayMs = Math.round(delayMs);
+    console.log('Failed response, new wait:' + waitMs);
+    await timer(waitMs);
+  }
+  return await response.text();
+}
+
+(async function () {
+  while (true) {
+    await timer(1000);
+    let currPage = GM_getValue('currPage', null);
+    console.log('current page: ', active, 'queue: ', queue.length);
+    if (queue.length == 0) {
+      console.log('finished fetching');
+      active = false;
+      return;
+    }
+    if (currPage == null || currPage?.page == document.URL) {
+      GM_setValue('currPage', { page: document.URL, lastUpdate: Date.now() });
+      active = true;
+    } else {
+      if (currPage != null && currPage?.page != document.URL) {
+        if (currPage?.lastUpdate + 2000 < Date.now()) {
+          GM_setValue('currPage', { page: document.URL, lastUpdate: Date.now() });
+          active = true;
+        } else active = false;
       }
     }
-    await timer(waitMs);
   }
 })();
 
@@ -284,7 +312,7 @@ async function getPage(url, doc = null, updateInfo, priority = false) {
 
     if (GM_getValue('pages', null)[url]) {
       updateInfo(GM_getValue('pages', null)[url]);
-      if (GM_getValue('pages', null)[url].lastUpdate + updatePageMs > new Date().valueOf()) return;
+      if (GM_getValue('pages', null)[url].lastUpdate + updatePageMs > Date.now()) return;
     }
 
     if (priority) {
@@ -333,7 +361,7 @@ async function getPage(url, doc = null, updateInfo, priority = false) {
   updateInfo({ count, total, table });
 
   let pages = GM_getValue('pages');
-  pages[url] = { count, total, lastUpdate: new Date().valueOf(), table };
+  pages[url] = { count, total, lastUpdate: Date.now(), table };
   GM_setValue('pages', pages);
 }
 
@@ -351,9 +379,9 @@ function getType(url, doc) {
 
 async function updateUserList(override = false) {
   console.log('Last List Fetch: ' + new Date(GM_getValue('lastFetch')));
-  if (GM_getValue('lastFetch', 0) + fetchListMs < new Date().valueOf() || override) {
+  if (GM_getValue('lastFetch', 0) + fetchListMs < Date.now() || override) {
     console.log('Fetching VN List');
-    GM_setValue('lastFetch', new Date().valueOf());
+    GM_setValue('lastFetch', Date.now());
     let response = await fetch(listExportUrl(userID)).then((response) => response.text());
     let parser = new DOMParser();
     let xmlDoc = parser.parseFromString(response, 'text/xml');
