@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.55
+// @version     1.56
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -22,7 +22,7 @@
 // @run-at      document-idle
 // ==/UserScript==
 
-let delayMs = 200;
+let delayMs = 300;
 const fetchListMs = 600000;
 const updatePageMs = 86400000;
 const listExportUrl = (id) => `https://vndb.org/${id}/list-export/xml`;
@@ -122,7 +122,8 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
       elem.href.match(/vndb.org\/[sp]\d+/)
     );
     for (let entryElem of pages) {
-      let visible = false;
+      let visible = false,
+        tooltipLoaded = false;
       let span = document.createElement('span');
       entryElem.append(span);
       let tooltip = createElementFromHTML(`<div class="mainbox"><p>Fetching Data</p></div>`);
@@ -134,9 +135,11 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
           placement: 'top',
         });
         function show() {
-          console.log('Requesting ' + entryElem.href);
           visible = true;
-          getPage(entryElem.href, null, (info) => {}, true);
+          if (!tooltipLoaded) {
+            console.log('Requesting ' + entryElem.href);
+            getPage(entryElem.href, null, (info) => {}, true);
+          }
           elem.setAttribute('data-show', '');
           popperInstance.update();
         }
@@ -158,6 +161,7 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
       makePopper(entryElem, tooltip);
 
       getPage(entryElem.href, null, (info) => {
+        tooltipLoaded = true;
         let newTable;
         if (info.count > 0) {
           newTable = createElementFromHTML(info.table);
@@ -251,13 +255,16 @@ let active = false;
       let currURL;
       if (prioQueue.length > 0) {
         currURL = prioQueue.shift();
+        queue = queue.filter((queueUrl) => queueUrl != currURL);
         console.log(`Priority: getting ${currURL}, waiting ${delayMs} ms`);
       } else if (queue.length > 0) {
         currURL = queue.shift();
         console.log(`Getting ${currURL}: ${queue.length} pages remaining, waiting ${delayMs} ms`);
       }
-      let responseText = await getUrl(currURL);
-      resolvers[currURL].forEach((resolver) => resolver(responseText));
+      if (currURL) {
+        let responseText = await getUrl(currURL);
+        resolvers[currURL].forEach((resolver) => resolver(responseText));
+      }
     }
     await timer(delayMs);
   }
@@ -382,7 +389,7 @@ async function updateUserList(override = false) {
   if (GM_getValue('lastFetch', 0) + fetchListMs < Date.now() || override) {
     console.log('Fetching VN List');
     GM_setValue('lastFetch', Date.now());
-    let response = await fetch(listExportUrl(userID)).then((response) => response.text());
+    let response = await getUrl(listExportUrl(userID));
     let parser = new DOMParser();
     let xmlDoc = parser.parseFromString(response, 'text/xml');
     let vnsList = [...xmlDoc.querySelectorAll('vndb-export > vns > vn')];
