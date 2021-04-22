@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.53
+// @version     1.54
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -22,9 +22,9 @@
 // @run-at      document-idle
 // ==/UserScript==
 
-const delayMs = 200;
+let delayMs = 400;
 const fetchListMs = 600000;
-const updatePageMs = 3600000;
+const updatePageMs = 86400000;
 const listExportUrl = (id) => `https://vndb.org/${id}/list-export/xml`;
 const types = {
   VN: 'loli',
@@ -122,6 +122,7 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
       elem.href.match(/vndb.org\/[sp]\d+/)
     );
     for (let entryElem of pages) {
+      let visible = false;
       let span = document.createElement('span');
       entryElem.append(span);
       let tooltip = createElementFromHTML(`<div class="mainbox"><p>Fetching Data</p></div>`);
@@ -133,10 +134,14 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
           placement: 'top',
         });
         function show() {
+          console.log('Requesting ' + entryElem.href);
+          visible = true;
+          getPage(entryElem.href, null, (info) => {}, true);
           elem.setAttribute('data-show', '');
           popperInstance.update();
         }
         function hide() {
+          visible = false;
           elem.removeAttribute('data-show');
         }
         const showEvents = ['mouseenter', 'focus'];
@@ -147,6 +152,7 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
         hideEvents.forEach((event) => {
           parent.addEventListener(event, hide);
         });
+        return show;
       };
 
       makePopper(entryElem, tooltip);
@@ -164,7 +170,8 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
         tooltip = entryElem.replaceChild(newTable, tooltip);
         tooltip = newTable;
         tooltip.className += ' tooltip';
-        makePopper(entryElem, tooltip);
+        let show = makePopper(entryElem, tooltip);
+        if (visible) show();
       });
     }
   } else if ([types.CompanyVNs, types.Releases, types.Staff].includes(type)) {
@@ -235,10 +242,16 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
 })();
 
 let queue = [];
+let prioQueue = [];
 let resolvers = {};
 (async function () {
   let waitMs = delayMs;
   while (true) {
+    if (prioQueue.length > 0) {
+      queue = queue.filter((url) => !prioQueue.includes(url));
+      queue.unshift(...prioQueue);
+      prioQueue = [];
+    }
     if (queue.length > 0) {
       let currURL = queue[0];
       console.log(`Getting ${currURL}: ${queue.length} pages remaining`);
@@ -251,6 +264,8 @@ let resolvers = {};
         queue.shift();
       } else {
         waitMs *= 2;
+        delayMs *= 1.2;
+        delayMs = Math.round(delayMs);
         console.log('Failed response, new wait:' + waitMs);
       }
     }
@@ -258,7 +273,7 @@ let resolvers = {};
   }
 })();
 
-async function getPage(url, doc = null, updateInfo) {
+async function getPage(url, doc = null, updateInfo, priority = false) {
   let type,
     table,
     count = 0,
@@ -270,6 +285,11 @@ async function getPage(url, doc = null, updateInfo) {
     if (GM_getValue('pages', null)[url]) {
       updateInfo(GM_getValue('pages', null)[url]);
       if (GM_getValue('pages', null)[url].lastUpdate + updatePageMs > new Date().valueOf()) return;
+    }
+
+    if (priority) {
+      prioQueue.push(url);
+      return;
     }
 
     doc = document.createElement('html');

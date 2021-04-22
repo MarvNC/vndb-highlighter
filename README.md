@@ -16,9 +16,11 @@ In addition, the userscript will add tooltips to staff and producer links so you
 
 ## Usage
 
-You can navigate to your user settings page to change the colors that the userscript uses to highlight entries.
+You can navigate to your user settings page (vndb.org/uXXXX/edit) to change the colors that the userscript uses to highlight entries.
 
-Note that the userscript currently has a limit of ten minutes between fetching the user list again, and a limit of one hour before fetching tooltips again. You can force an update of a tooltip by visiting the staff or producer page.
+Note that the userscript currently has a limit of ten minutes between fetching the user list again, and a limit of one day before fetching tooltips again. You can force an update of a tooltip by visiting the staff or producer page.
+
+Also, hovering an unloaded staff/producer link will make it load faster.
 
 ## Images
 
