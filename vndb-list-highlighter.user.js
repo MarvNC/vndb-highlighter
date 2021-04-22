@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.52
+// @version     1.53
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -208,7 +208,10 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
 
     setPickerColors();
 
-    document.querySelector('.saveColors').onclick = () => GM_setValue('colors', colors);
+    document.querySelector('.saveColors').onclick = () => {
+      GM_setValue('colors', colors);
+      setPickerColors();
+    };
     document.querySelector('.resetColors').onclick = () => {
       colors = GM_getValue('colors', duplicate(defaultColors));
       setPickerColors();
