@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.51
+// @version     1.52
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -213,6 +213,8 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
       colors = duplicate(defaultColors);
       setPickerColors();
     };
+    document.querySelector('.clearCache').onclick = () => GM_setValue('pages', {});
+    document.querySelector('.getVNs').onclick = () => updateUserList(true);
 
     ['change', 'swatchselect', 'save', 'clear', 'cancel', 'hide', 'show'].forEach((colorEvent) =>
       allPickers.forEach(({ picker, color: pickerColor }) => {
@@ -320,9 +322,10 @@ function getType(url, doc) {
   }
 }
 
-async function updateUserList() {
+async function updateUserList(override = false) {
   console.log('Last List Fetch: ' + new Date(GM_getValue('lastFetch')));
-  if (GM_getValue('lastFetch', 0) + fetchListMs < new Date().valueOf()) {
+  if (GM_getValue('lastFetch', 0) + fetchListMs < new Date().valueOf() || override) {
+    console.log('Fetching VN List')
     GM_setValue('lastFetch', new Date().valueOf());
     let response = await fetch(listExportUrl(userID)).then((response) => response.text());
     let parser = new DOMParser();
@@ -435,6 +438,8 @@ function addPickerStuff(fieldset) {
         <input type="button" value="Save" class="submit saveColors">
         <input type="button" value="Reset" class="submit resetColors">
         <input type="button" value="Reset to Defaults" class="submit resetDefaultColors">
+        <input type="button" value="Clear Staff/Producer Cache" class="submit clearCache">
+        <input type="button" value="Fetch VNList" class="submit getVNs">
       </div>
   </div>
   `)
