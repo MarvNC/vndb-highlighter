@@ -98,7 +98,9 @@ let colors = GM_getValue('colors', duplicate(defaultColors));
 
 GM_addStyle(
   `.listinfo{color:${colors.SubTextColor}!important;padding-left:15px;}
-  .tooltip{display:none;z-index:999;}.tooltip[data-show]{display:block;}`
+  .tooltip{display:none;z-index:999;}.tooltip[data-show]{display:block;}
+  .pickerdiv{position:absolute;}
+  .pcr-app{display:none!important;}.pcr-app.visible{display:block!important;}`
 );
 GM_addStyle(
   Object.keys(statusTypes)
@@ -203,6 +205,8 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
       allPickers.forEach(({ picker, color }) => picker.setColor(colors[color]));
       updateColorsStyle();
     };
+
+    setPickerColors();
 
     document.querySelector('.saveColors').onclick = () => GM_setValue('colors', colors);
     document.querySelector('.resetColors').onclick = () => {
@@ -325,7 +329,7 @@ function getType(url, doc) {
 async function updateUserList(override = false) {
   console.log('Last List Fetch: ' + new Date(GM_getValue('lastFetch')));
   if (GM_getValue('lastFetch', 0) + fetchListMs < new Date().valueOf() || override) {
-    console.log('Fetching VN List')
+    console.log('Fetching VN List');
     GM_setValue('lastFetch', new Date().valueOf());
     let response = await fetch(listExportUrl(userID)).then((response) => response.text());
     let parser = new DOMParser();
@@ -360,8 +364,10 @@ function PickrOptions(selector, defaultColor) {
   return {
     el: selector,
     theme: 'classic',
-
     default: defaultColor,
+    inline: true,
+    autoReposition: true,
+    adjustableNumbers: true,
 
     swatches: [
       'rgba(244, 67, 54, 1)',
@@ -407,40 +413,53 @@ function addPickerStuff(fieldset) {
     <h1>List Highlighter</h1>
     <table class="formtable">
       <tr class="newpart">
+        <td>List</td>
+      </tr>
+      <tr class="newfield">
+        <td>
+          <input type="button" value="Clear Staff/Producer Cache" class="submit clearCache" />
+          <input type="button" value="Fetch VNList" class="submit getVNs" />
+        </td>
+      </tr>
+      <tr class="newpart">
         <td colspan="2">Pick Colors</td>
       </tr>
       <tr class="newfield">
-        <td class="label">List Text Color</td>
-        <td class="field"><div class="color-picker-0"></div></td>
+        <td>
+          <table style="width: 100%">
+            <thead>
+              <tr>
+                <td class="pickerheader">List Text Color</td>
+                <td class="pickerheader">Playing Color</td>
+                <td class="pickerheader">Finished Color</td>
+                <td class="pickerheader">Stalled Color</td>
+                <td class="pickerheader">Dropped Color</td>
+                <td class="pickerheader">Wishlist Color</td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="pickerdiv"><button class="color-picker-0"></button></div></td>
+                <td><div class="pickerdiv"><button class="color-picker-1"></button></div></td>
+                <td><div class="pickerdiv"><button class="color-picker-2"></button></div></td>
+                <td><div class="pickerdiv"><button class="color-picker-3"></button></div></td>
+                <td><div class="pickerdiv"><button class="color-picker-4"></button></div></td>
+                <td><div class="pickerdiv"><button class="color-picker-5"></button></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </td>
       </tr>
       <tr class="newfield">
-        <td class="label">Playing Color</td>
-        <td class="field"><div class="color-picker-1"></div></td>
-      </tr>
-      <tr class="newfield">
-        <td class="label">Finished Color</td>
-        <td class="field"><div class="color-picker-2"></div></td>
-      </tr>
-      <tr class="newfield">
-        <td class="label">Stalled Color</td>
-        <td class="field"><div class="color-picker-3"></div></td>
-      </tr>
-      <tr class="newfield">
-        <td class="label">Dropped Color</td>
-        <td class="field"><div class="color-picker-4"></div></td>
-      </tr>
-      <tr class="newfield">
-        <td class="label">Wishlist Color</td>
-        <td class="field"><div class="color-picker-5"></div></td>
+        <td class="label" style="padding-top:30px">
+          <div class="colorbuttons">
+            <input type="button" value="Save" class="submit saveColors" />
+            <input type="button" value="Reset" class="submit resetColors" />
+            <input type="button" value="Reset to Defaults" class="submit resetDefaultColors" />
+          </div>
+        </td>
       </tr>
     </table>
-      <div class="colorbuttons">
-        <input type="button" value="Save" class="submit saveColors">
-        <input type="button" value="Reset" class="submit resetColors">
-        <input type="button" value="Reset to Defaults" class="submit resetDefaultColors">
-        <input type="button" value="Clear Staff/Producer Cache" class="submit clearCache">
-        <input type="button" value="Fetch VNList" class="submit getVNs">
-      </div>
   </div>
   `)
   );

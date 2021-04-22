@@ -24,4 +24,4 @@ Note that the userscript currently has a limit of ten minutes between fetching t
 
 ![highlight](https://files.catbox.moe/n2xq3z.png)
 ![tooltips](https://files.catbox.moe/w4t0ub.png)
-![colorpicker](https://files.catbox.moe/or4th1.png)
+![colorpicker](https://files.catbox.moe/551ci8.png)
