@@ -1,6 +1,6 @@
 ### [Install](https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js)
 
-(With [Violentmonkey](https://violentmonkey.github.io/))
+(I recommend using [Violentmonkey](https://violentmonkey.github.io/))
 
 # vndb-highlighter
 
@@ -24,4 +24,4 @@ Note that the userscript currently has a limit of ten minutes between fetching t
 
 ![highlight](https://files.catbox.moe/n2xq3z.png)
 ![tooltips](https://files.catbox.moe/w4t0ub.png)
-![colorpicker](https://files.catbox.moe/bo8mj3.png)
+![colorpicker](https://files.catbox.moe/qs7fog.png)
