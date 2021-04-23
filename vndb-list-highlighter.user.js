@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.56
+// @version     1.57
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -323,7 +323,7 @@ async function getPage(url, doc = null, updateInfo, priority = false) {
     }
 
     if (priority) {
-      prioQueue.push(url);
+      prioQueue.unshift(url);
       return;
     }
 
