@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.57
+// @version     1.58
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -37,6 +37,7 @@ const types = {
   <table class="stripe">
     <thead>
       <tr>
+        <td class="tc_ulist"></td>
         <td class="tc1">Title</td>
         <td class="tc2">Released</td>
         <td class="tc3">Role/Cast</td>
