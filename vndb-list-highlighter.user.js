@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.60
+// @version     1.61
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -122,69 +122,6 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
 
   let type = getType(document.URL, document);
 
-  // make popups for all staff or producer links in the page
-  let pages = [...document.querySelectorAll('a[href]')].filter((elem) =>
-    elem.href.match(/vndb.org\/[sp]\d+/)
-  );
-  for (let entryElem of pages) {
-    let visible = false,
-      tooltipLoaded = false;
-    let span = document.createElement('span');
-    entryElem.append(span);
-    let tooltip = createElementFromHTML(`<div class="mainbox"><p>Fetching Data</p></div>`);
-    tooltip.className += ' tooltip';
-    entryElem.prepend(tooltip);
-
-    let makePopper = (parent, elem) => {
-      let popperInstance = Popper.createPopper(parent, elem, {
-        placement: 'top',
-      });
-      // if moused over, prioritise getting info of that tooltip
-      function show() {
-        visible = true;
-        if (!tooltipLoaded) {
-          console.log('Requesting ' + entryElem.href);
-          getPage(entryElem.href, null, (info) => {}, true);
-        }
-        elem.setAttribute('data-show', '');
-        popperInstance.update();
-      }
-      function hide() {
-        visible = false;
-        elem.removeAttribute('data-show');
-      }
-      const showEvents = ['mouseenter', 'focus'];
-      const hideEvents = ['mouseleave', 'blur'];
-      showEvents.forEach((event) => {
-        parent.addEventListener(event, show);
-      });
-      hideEvents.forEach((event) => {
-        parent.addEventListener(event, hide);
-      });
-      return show;
-    };
-
-    makePopper(entryElem, tooltip);
-
-    getPage(entryElem.href, null, (info) => {
-      tooltipLoaded = true;
-      let newTable;
-      if (info.count > 0) {
-        newTable = createElementFromHTML(info.table);
-        span.innerText = ` (${info.count})`;
-      } else {
-        newTable = createElementFromHTML(
-          `<div class="mainbox"><p>No Novels on List (of ${info.total})</p></div>`
-        );
-      }
-      tooltip = entryElem.replaceChild(newTable, tooltip);
-      tooltip = newTable;
-      tooltip.className += ' tooltip';
-      let show = makePopper(entryElem, tooltip);
-      if (visible) show();
-    });
-  }
-
   if ([types.CompanyVNs, types.Releases, types.Staff].includes(type)) {
     getPage(document.URL, document, (info) => {
       let table = createElementFromHTML(info.table);
@@ -249,6 +186,69 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
         });
       })
     );
+  }
+
+  // make popups for all staff or producer links in the page
+  let pages = [...document.querySelectorAll('a[href]')].filter((elem) =>
+    elem.href.match(/vndb.org\/[sp]\d+/)
+  );
+  for (let entryElem of pages) {
+    let visible = false,
+      tooltipLoaded = false;
+    let span = document.createElement('span');
+    entryElem.append(span);
+    let tooltip = createElementFromHTML(`<div class="mainbox"><p>Fetching Data</p></div>`);
+    tooltip.className += ' tooltip';
+    entryElem.prepend(tooltip);
+
+    let makePopper = (parent, elem) => {
+      let popperInstance = Popper.createPopper(parent, elem, {
+        placement: 'top',
+      });
+      // if moused over, prioritise getting info of that tooltip
+      function show() {
+        visible = true;
+        if (!tooltipLoaded) {
+          console.log('Requesting ' + entryElem.href);
+          getPage(entryElem.href, null, (info) => {}, true);
+        }
+        elem.setAttribute('data-show', '');
+        popperInstance.update();
+      }
+      function hide() {
+        visible = false;
+        elem.removeAttribute('data-show');
+      }
+      const showEvents = ['mouseenter', 'focus'];
+      const hideEvents = ['mouseleave', 'blur'];
+      showEvents.forEach((event) => {
+        parent.addEventListener(event, show);
+      });
+      hideEvents.forEach((event) => {
+        parent.addEventListener(event, hide);
+      });
+      return show;
+    };
+
+    makePopper(entryElem, tooltip);
+
+    getPage(entryElem.href, null, (info) => {
+      tooltipLoaded = true;
+      let newTable;
+      if (info.count > 0) {
+        newTable = createElementFromHTML(info.table);
+        span.innerText = ` (${info.count})`;
+      } else {
+        newTable = createElementFromHTML(
+          `<div class="mainbox"><p>No Novels on List (of ${info.total})</p></div>`
+        );
+      }
+      tooltip = entryElem.replaceChild(newTable, tooltip);
+      tooltip = newTable;
+      tooltip.className += ' tooltip';
+      let show = makePopper(entryElem, tooltip);
+      if (visible) show();
+    });
   }
 })();
 
