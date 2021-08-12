@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.62
+// @version     1.63
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -65,16 +65,8 @@ const types = {
   Releases: {
     vnSelector: 'tbody > tr.vn > td > a',
     insertBefore: '#maincontent > div:nth-child(3)',
-    box: (novels, count) => `<div class="mainbox">
-    <p>On List (${count})</p>
-    <table class="releases">
-      <tbody>
-        ${novels}
-      </tbody>
-    </table>
-  </div>
-  `,
   },
+  CompanyOther: '🦀',
 };
 const defaultColors = {
   PlayingColor: 'rgba(168.72, 5.77, 189.48, 0.28)',
@@ -345,6 +337,10 @@ async function getPage(url, doc = null, updateInfo, priority = false) {
     doc.innerHTML = await promise;
   }
   type = getType(url, doc);
+  if (type == types.Releases) {
+    getPage(url, null, updateInfo, priority);
+    return;
+  }
   vns = GM_getValue('vns', null);
 
   let vnElems = [...doc.querySelectorAll(type.vnSelector)];
@@ -381,8 +377,10 @@ async function getPage(url, doc = null, updateInfo, priority = false) {
 function getType(url, doc) {
   if (url.match('vndb.org/s')) return types.Staff;
   else if (url.match('vndb.org/p')) {
-    let text = doc.querySelectorAll('.tabselected')[1].innerText;
-    return text == 'Releases' ? types.Releases : types.CompanyVNs;
+    let text = doc.querySelectorAll('.tabselected')[1];
+    if (text?.innerText) {
+      return text.innerText == 'Releases' ? types.Releases : types.CompanyVNs;
+    } else return types.CompanyOther;
   } else if (url.match(/vndb.org\/[vc]/)) {
     return types.VN;
   } else if (url.match(/vndb.org\/u\d+\/edit/)) {
