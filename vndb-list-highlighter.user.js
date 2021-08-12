@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.63
+// @version     1.64
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -181,7 +181,7 @@ if (!GM_getValue('pages', null)) GM_setValue('pages', {});
 
   // make popups for all staff or producer links in the page
   let pages = [...document.querySelectorAll('a[href]')].filter((elem) =>
-    elem.href.match(/vndb.org\/[sp]\d+/)
+    elem.href.match(/vndb.org\/[sp]\d+$/)
   );
   for (let entryElem of pages) {
     let visible = false,
@@ -337,12 +337,9 @@ async function getPage(url, doc = null, updateInfo, priority = false) {
     doc.innerHTML = await promise;
   }
   type = getType(url, doc);
-  if (type == types.Releases) {
-    getPage(url, null, updateInfo, priority);
-    return;
-  }
   vns = GM_getValue('vns', null);
 
+  // add highlights to vns on list
   let vnElems = [...doc.querySelectorAll(type.vnSelector)];
   let novelelements = '';
   vnElems.forEach((elem) => {
@@ -365,6 +362,10 @@ async function getPage(url, doc = null, updateInfo, priority = false) {
     }
     total++;
   });
+  if (type == types.Releases) {
+    getPage(url, null, updateInfo, priority);
+    return;
+  }
   table = type.box(novelelements, count + '/' + total);
 
   updateInfo({ count, total, table });
