@@ -7,7 +7,7 @@
 // @match       https://vndb.org/v*
 // @match       https://vndb.org/c*
 // @match       https://vndb.org/u*/edit
-// @version     1.64
+// @version     1.65
 // @author      Marv
 // @downloadURL https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
 // @updateURL   https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js
@@ -90,7 +90,8 @@ const addCSS = (colors) => /* css */ `
 .tooltip[data-show]{display:block;}
 .pickerdiv{position:absolute;}
 .pcr-app{display:none!important;}
-.pcr-app.visible{display:block!important;}`;
+.pcr-app.visible{display:block!important;}
+.mainbox.tooltip>.prodvns{column-width:auto!important;}`;
 
 let userIDelem = document.querySelector('#menulist > div:nth-child(3) > div > a:nth-child(1)');
 let userID = userIDelem ? userIDelem.href.match(/u\d+/)[0] : null;
