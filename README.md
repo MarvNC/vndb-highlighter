@@ -1,3 +1,6 @@
+## Replaced by [this script](https://github.com/MarvNC/vn-userscripts#vndb-at-a-glance) which is a lot less laggy.
+
+
 ### [Install](https://raw.githubusercontent.com/MarvNC/vndb-highlighter/main/vndb-list-highlighter.user.js)
 
 (I recommend using [Violentmonkey](https://violentmonkey.github.io/))
